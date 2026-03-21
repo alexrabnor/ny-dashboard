@@ -7,6 +7,8 @@ export interface AppDefinition {
   tags: string[];
   imageSeed: string;
   status: 'active' | 'archived' | 'alert';
+  createdAt: string; // ISO date string
+  type?: 'Web App' | 'PWA' | 'Mobile App' | 'Game';
 }
 
 export interface DashboardItem {

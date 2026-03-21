@@ -38,3 +38,48 @@
 .glow-dot {
   @apply w-2 h-2 rounded-full shadow-[0_0_8px_currentColor];
 }
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(79, 156, 255, 0.8), 0 0 20px rgba(79, 156, 255, 0.4);
+}
+
+.neon-border {
+  box-shadow: 0 0 15px rgba(79, 156, 255, 0.3), inset 0 0 15px rgba(79, 156, 255, 0.1);
+}
+
+.game-grid-bg {
+  background-image: 
+    linear-gradient(rgba(79, 156, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 156, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.starfield {
+  background: radial-gradient(circle at center, #0d1e25 0%, #04151c 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.starfield::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 50px 160px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 80px 120px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 110px 210px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 150px 130px, #fff, rgba(0,0,0,0));
+  background-size: 200px 200px;
+  opacity: 0.3;
+  animation: stars 100s linear infinite;
+}
+
+@keyframes stars {
+  from { transform: translateY(0); }
+  to { transform: translateY(-1000px); }
+}
