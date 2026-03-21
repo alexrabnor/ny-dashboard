@@ -43,7 +43,7 @@ import {
 import { DASHBOARD_ITEMS, APPS, GAMES } from './constants';
 import { AppDefinition, DashboardItem } from './types';
 
-type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'settings';
+type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'settings' | 'ai-features';
 type SortCriteria = 'name' | 'category' | 'type' | 'date';
 
 export default function App() {
@@ -99,6 +99,8 @@ export default function App() {
         return <ProjectsPage onBack={() => setCurrentPage('dashboard')} />;
       case 'settings':
         return <SettingsPage onBack={() => setCurrentPage('dashboard')} />;
+      case 'ai-features':
+        return <AIFeaturesPage onBack={() => setCurrentPage('dashboard')} />;
       default:
         return <DashboardHome onNavigate={setCurrentPage} />;
     }
@@ -123,8 +125,8 @@ export default function App() {
               <Cloud className="text-on-primary-container" size={20} />
             </div>
             <div>
-              <h1 className="font-headline text-lg font-extrabold tracking-tight text-primary-container">AlexCloud</h1>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Executive Suite</p>
+              <h1 className="font-headline text-lg font-extrabold tracking-tight text-primary-container">AlexCloud Plattform</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Ledningspanel</p>
             </div>
           </div>
         </div>
@@ -155,6 +157,12 @@ export default function App() {
             label="Spelbibliotek"
           />
           <SidebarLink 
+            active={currentPage === 'ai-features'} 
+            onClick={() => setCurrentPage('ai-features')}
+            icon={<Bot size={18} />}
+            label="AI Funktioner"
+          />
+          <SidebarLink 
             active={currentPage === 'settings'} 
             onClick={handleSettingsClick}
             icon={isSettingsUnlocked ? <Settings size={18} /> : <Lock size={18} />}
@@ -180,7 +188,12 @@ export default function App() {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/5 bg-surface/80 px-8 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <h2 className="font-headline text-xl font-bold tracking-tight text-white">
-              {currentPage === 'dashboard' ? 'Hemserver' : currentPage === 'library' ? 'Appbibliotek' : currentPage === 'games' ? 'Spelbibliotek' : currentPage === 'projects' ? 'Projekt' : 'Systeminställningar'}
+              {currentPage === 'dashboard' ? 'Hemserver' : 
+               currentPage === 'library' ? 'Appbibliotek' : 
+               currentPage === 'games' ? 'Spelbibliotek' : 
+               currentPage === 'projects' ? 'Projekt' : 
+               currentPage === 'ai-features' ? 'AI Funktioner' :
+               'Systeminställningar'}
             </h2>
           </div>
 
@@ -268,8 +281,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
             <span className="h-1.5 w-1.5 rounded-full bg-secondary-container shadow-[0_0_8px_#34ff8d]" />
           </div>
           <h1 className="font-headline text-6xl font-black leading-none tracking-tighter text-white mb-6 uppercase">
-            ALEX <span className="text-primary-container">CORE</span><br />
-            COMMAND
+            AlexCloud <span className="text-primary-container">Plattform</span>
           </h1>
           <p className="text-lg text-white/40 mb-8 max-w-lg leading-relaxed">
             Välkommen till min centrala hubb för infrastruktur, personliga applikationer och datadriven analys. 
@@ -928,6 +940,108 @@ function ProjectsPage({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AIFeaturesPage({ onBack }: { onBack: () => void }) {
+  const aiTools = [
+    {
+      id: 'assistant',
+      title: 'AI Assistent',
+      description: 'Din personliga server-expert för Ubuntu och Docker.',
+      icon: <Bot size={24} />,
+      status: 'active',
+      tags: ['Gemini', 'Support']
+    },
+    {
+      id: 'prompts',
+      title: 'Prompt-bibliotek',
+      description: 'Spara och hantera dina bästa prompter för olika AI-modeller.',
+      icon: <FileCode size={24} />,
+      status: 'active',
+      tags: ['Produktivitet', 'Sparat']
+    },
+    {
+      id: 'image-gen',
+      title: 'Bildgenerering',
+      description: 'Skapa unika bilder med AI direkt i din dashboard.',
+      icon: <Cloud size={24} />,
+      status: 'coming-soon',
+      tags: ['Kreativt', 'Imagen']
+    }
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Tillbaka till Översikt
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        {aiTools.map((tool) => (
+          <motion.div
+            key={tool.id}
+            whileHover={{ y: -4 }}
+            className="group relative overflow-hidden rounded-3xl bg-surface-container p-8 border border-white/5 hover:bg-surface-container-high transition-all"
+          >
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-container-highest text-primary-container shadow-inner group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+              {tool.icon}
+            </div>
+            
+            <h3 className="font-headline text-xl font-bold text-white mb-3">{tool.title}</h3>
+            <p className="text-sm text-white/40 leading-relaxed mb-6">
+              {tool.description}
+            </p>
+
+            <div className="flex flex-wrap gap-2 mb-8">
+              {tool.tags.map(tag => (
+                <span key={tag} className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/40">
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {tool.status === 'active' ? (
+              <button className="w-full rounded-xl bg-primary-container py-3 text-xs font-bold uppercase tracking-widest text-on-primary-container transition-all hover:scale-105">
+                Öppna Verktyg
+              </button>
+            ) : (
+              <div className="w-full rounded-xl bg-white/5 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-white/20">
+                Kommer snart
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Featured AI Assistant Preview */}
+      <div className="rounded-3xl bg-surface-container p-12 border border-white/5 relative overflow-hidden">
+        <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none">
+          <Bot size={400} className="text-primary-container translate-x-1/4 translate-y-1/4" />
+        </div>
+        
+        <div className="relative z-10 max-w-xl">
+          <h2 className="font-headline text-3xl font-black text-white mb-6 uppercase tracking-tight">Behöver du hjälp med servern?</h2>
+          <p className="text-white/40 leading-relaxed mb-10">
+            Vår inbyggda AI-assistent kan hjälpa dig att felsöka Docker-containrar, 
+            skriva terminalkommandon och optimera din serverprestanda.
+          </p>
+          <button 
+            onClick={() => {/* Navigate to assistant tab in settings or similar */}}
+            className="inline-flex items-center gap-3 rounded-full bg-secondary-container px-8 py-4 font-headline text-sm font-black uppercase tracking-widest text-on-secondary-container transition-all hover:scale-105"
+          >
+            Prata med assistenten
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -39,12 +39,12 @@ export const DASHBOARD_ITEMS: DashboardItem[] = [
   },
   {
     id: 'control',
-    title: 'Alex kontrollpanel',
-    subtitle: 'Dashboard för projekt, appar och AI-prompter',
+    title: 'AI Funktioner',
+    subtitle: 'Dashboard för AI-prompter, assistenter och verktyg',
     icon: '🧠',
     status: 'active',
-    type: 'link',
-    target: '#',
+    type: 'page',
+    target: 'ai-features',
   },
   {
     id: 'games',
