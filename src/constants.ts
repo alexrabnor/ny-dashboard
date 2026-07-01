@@ -421,6 +421,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'oletiketter',
+    bannerImage: 'https://databasen.alexcloud.se/assets/b6323b8f-54ea-410a-9603-0c40c0cdd895?width=800&quality=80',
+    title: 'Öletiketter',
+    description: 'Visuellt arkiv för hantverksölens etikettkonst – kuraterade gallerier med IPA, stout och sour i högupplöst format, masonry-grid, lightbox och automatiskt extraherad färgpalett för varje etikett.',
+    icon: '🍺',
+    banner: "linear-gradient(135deg, #f59e0b, #7c2d12)",
+    bannerEmoji: '🎨',
+    category: 'Kreativt',
+    tags: ['React', 'Vite', 'Framer Motion', 'Directus'],
+    imageSeed: 'oletiketter',
+    status: 'active',
+    createdAt: '2026-07-01T12:00:00Z',
+    type: 'Web App',
+    url: 'https://oletiketter.alexcloud.se',
+  },
+  {
     id: 'sommarplanerare',
     bannerImage: 'https://databasen.alexcloud.se/assets/6bf62901-4001-4bc8-b9e3-a7114b5ea7f6?width=800&quality=80',
     title: 'Sommarplanerare',
