@@ -421,6 +421,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'blavitt',
+    bannerImage: 'https://databasen.alexcloud.se/assets/d45266e3-eff2-487e-8dbe-8a1076ba1fae?width=800&quality=80',
+    title: 'Blåvitt-bloggen',
+    description: 'AI-driven supporterblogg om IFK Göteborg – efter varje match skrivs en passionerad krönika med matchstatistik, xG-grafer, matchbetyg, "Matchens lirare"-röstning och kommentarsfält. Kommande matcher och allsvensk tabell direkt på startsidan.',
+    icon: '⚽',
+    banner: "linear-gradient(135deg, #002a4f, #005ca9)",
+    bannerEmoji: '🔵',
+    category: 'Kreativt',
+    tags: ['React', 'Vite', 'OpenAI', 'Directus', 'Fotmob'],
+    imageSeed: 'blavitt',
+    status: 'active',
+    createdAt: '2026-07-06T12:00:00Z',
+    type: 'Web App',
+    url: 'https://blavitt.alexcloud.se',
+  },
+  {
     id: 'oletiketter',
     bannerImage: 'https://databasen.alexcloud.se/assets/b6323b8f-54ea-410a-9603-0c40c0cdd895?width=800&quality=80',
     title: 'Öletiketter',
