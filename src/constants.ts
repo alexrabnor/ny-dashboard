@@ -421,6 +421,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'roxette',
+    bannerImage: 'https://databasen.alexcloud.se/assets/6cc4b047-95ad-4036-8f3d-2629b8791c81?width=800&quality=80',
+    title: 'Roxette-guiden',
+    description: 'Konsertguide inför Roxette Live! Back Again! med Lena Philipsson – hela setlistan låt för låt med historien bakom varje text, Marie Fredrikssons arv, tidslinje 1986–2026 och Spotify-länkar för förlyssning.',
+    icon: '🎸',
+    banner: "linear-gradient(135deg, #ff2d78, #7b2ff7)",
+    bannerEmoji: '🎤',
+    category: 'Kreativt',
+    tags: ['Express', 'Musik', 'Spotify'],
+    imageSeed: 'roxette',
+    status: 'active',
+    createdAt: '2026-07-08T21:30:00Z',
+    type: 'Web App',
+    url: 'https://roxette.alexcloud.se',
+  },
+  {
     id: 'olprovning',
     bannerImage: 'https://databasen.alexcloud.se/assets/ffea77e2-0f05-4ae2-b63c-b2e67fb6a492?width=800&quality=80',
     title: 'Ölprovningen',
