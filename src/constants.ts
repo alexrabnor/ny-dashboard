@@ -421,6 +421,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'olprovning',
+    bannerImage: 'https://databasen.alexcloud.se/assets/ffea77e2-0f05-4ae2-b63c-b2e67fb6a492?width=800&quality=80',
+    title: 'Ölprovningen',
+    description: 'Digitalt ölprovningsprotokoll baserat på Systembolagets mall – Alex & Christian fyller i utseende, doft, smak och totalbetyg på mobilen, fotar ölen och jämför omdömen sida vid sida. Blindläge döljer den andres betyg tills båda är klara, och varje kväll får en topplista.',
+    icon: '🍺',
+    banner: "linear-gradient(135deg, #16110c, #c07f1f)",
+    bannerEmoji: '🍻',
+    category: 'Mat',
+    tags: ['Express', 'Directus', 'Mobil', 'PIN-skydd'],
+    imageSeed: 'olprovning',
+    status: 'active',
+    createdAt: '2026-07-08T20:00:00Z',
+    type: 'Web App',
+    url: 'https://olprovning.alexcloud.se',
+  },
+  {
     id: 'blavitt',
     bannerImage: 'https://databasen.alexcloud.se/assets/d45266e3-eff2-487e-8dbe-8a1076ba1fae?width=800&quality=80',
     title: 'Blåvitt-bloggen',
