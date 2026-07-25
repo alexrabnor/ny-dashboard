@@ -437,6 +437,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'familjeresor',
+    bannerImage: 'https://databasen.alexcloud.se/assets/8372c354-c234-4e07-afdb-10bd07e38dbe?width=800&quality=80',
+    title: 'Familjeresor',
+    description: 'Redaktionellt reseminnesarkiv för familjens sommarresor – en hjältebanner för senaste resan, kort för alla resmål och en berättande detaljsida per plats med galleri på upp till 50 bilder, lightbox och koordinater. Varje resmål har sin egen stämningsanimation: vågor, dimma över sjön, pollen i motljus eller måsar över kusten.',
+    icon: '🏖️',
+    banner: 'linear-gradient(135deg, #211c15, #2f6b5c)',
+    bannerEmoji: '🏖️',
+    category: 'Resor',
+    tags: ['Express', 'Sharp', 'Vanilla JS'],
+    imageSeed: 'familjeresor',
+    status: 'active',
+    createdAt: '2026-07-25T20:00:00Z',
+    type: 'Web App',
+    url: 'https://familjeresor.alexcloud.se',
+  },
+  {
     id: 'resedagboken',
     bannerImage: 'https://databasen.alexcloud.se/assets/b496e1df-9f4c-4e25-8de2-6524f64d99d5?width=800&quality=80',
     title: 'Resedagboken',
