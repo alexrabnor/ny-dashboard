@@ -194,6 +194,22 @@ export const SHARED_APPS: AppDefinition[] = [
 // Spel från Spelarkivet (games.alexcloud.se)
 export const GAMES: AppDefinition[] = [
   {
+    id: 'diamantjakten',
+    bannerImage: 'https://diamantjakten.alexcloud.se/og.jpg',
+    title: 'Diamantjakten',
+    description: 'Brädspelsklassikern, fast hela jorden. Res med båt, flyg och till fots, vänd brickor i främmande hamnar och ta diamanten hem till Kapstaden före alla andra. 2–6 spelare på varsin skärm, från 5 år.',
+    icon: '💎',
+    banner: 'radial-gradient(circle at 42% 35%, rgba(207, 165, 64, 0.26), #14110b)',
+    bannerEmoji: '💎',
+    category: 'Sällskapsspel',
+    tags: ['Flerspelarläge', 'Brädspel', 'Familj'],
+    imageSeed: 'diamantjakten',
+    status: 'active',
+    createdAt: '2026-07-25T12:00:00Z',
+    type: 'Game',
+    url: 'https://diamantjakten.alexcloud.se',
+  },
+  {
     id: 'gbg-protocol',
     title: 'GBG Protocol',
     description: 'Platsbaserat agent-uppdrag i Göteborg. Lös krypterade gåtor, navigera till hemliga noder och knäck koden på plats för att låsa upp protokollet.',
@@ -420,6 +436,22 @@ export const GAMES: AppDefinition[] = [
 
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
+  {
+    id: 'resedagboken',
+    bannerImage: 'https://databasen.alexcloud.se/assets/b496e1df-9f4c-4e25-8de2-6524f64d99d5?width=800&quality=80',
+    title: 'Resedagboken',
+    description: 'Publik resedagbok med scrollytelling – varje resa berättas dag för dag med interaktiv karta som ritar rutten, bilder som glider in vid scroll och lightbox i fullskärm. Bilder laddas upp direkt från mobilens kamerarulle med automatisk GPS- och datumläsning.',
+    icon: '🧳',
+    banner: "linear-gradient(135deg, #0e0e0c, #c1694f)",
+    bannerEmoji: '🗺️',
+    category: 'Resor',
+    tags: ['Next.js', 'Directus', 'Leaflet'],
+    imageSeed: 'resedagboken',
+    status: 'active',
+    createdAt: '2026-07-18T21:00:00Z',
+    type: 'Web App',
+    url: 'https://resor.alexcloud.se',
+  },
   {
     id: 'roxette',
     bannerImage: 'https://databasen.alexcloud.se/assets/6cc4b047-95ad-4036-8f3d-2629b8791c81?width=800&quality=80',

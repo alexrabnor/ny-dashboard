@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
 import { 
-  Cloud, 
-  LayoutDashboard, 
-  Library, 
-  Settings, 
-  Plus, 
-  HelpCircle, 
-  LogOut, 
-  Search, 
-  Bell, 
+  Cloud,
+  LayoutDashboard,
+  Library,
+  Plus,
+  Search,
+  Smartphone,
+  Download,
+  Menu,
+  X,
   ChevronRight,
-  ChevronDown,
   ExternalLink,
   ArrowLeft,
   Briefcase,
@@ -24,57 +22,85 @@ import {
   Heart,
   Lock,
   FileCode,
-  File,
-  Folder,
-  FolderOpen,
-  Shield,
   Thermometer,
   HardDrive,
   Server,
-  Terminal,
   Bot,
-  Box,
-  Play,
-  Square,
-  RefreshCw,
-  Save,
-  Send
+  Users
 } from 'lucide-react';
-import { DASHBOARD_ITEMS, APPS, GAMES } from './constants';
-import { AppDefinition, DashboardItem } from './types';
+import { DASHBOARD_ITEMS, APPS, GAMES, SHARED_APPS, MOBILE_APPS } from './constants';
+import { AppDefinition, DashboardItem, MobileAppDefinition } from './types';
 
-type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'settings' | 'ai-features';
+type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'ai-features' | 'private' | 'shared' | 'system' | 'mobile';
+
+// Delas av sidomenyn (desktop) och hamburgermenyn (mobil)
+const NAV_ITEMS: { page: Page; label: string; icon: React.ReactNode }[] = [
+  { page: 'dashboard', label: 'Översikt', icon: <LayoutDashboard size={18} /> },
+  { page: 'projects', label: 'Projekt', icon: <Briefcase size={18} /> },
+  { page: 'library', label: 'Appbibliotek', icon: <Library size={18} /> },
+  { page: 'games', label: 'Spelbibliotek', icon: <Gamepad2 size={18} /> },
+  { page: 'mobile', label: 'Mobilappar', icon: <Smartphone size={18} /> },
+  { page: 'ai-features', label: 'AI Funktioner', icon: <Bot size={18} /> },
+  { page: 'private', label: 'Övriga appar', icon: <Lock size={18} /> },
+  { page: 'shared', label: 'Andras appar', icon: <Users size={18} /> },
+  { page: 'system', label: 'Systemappar', icon: <Server size={18} /> },
+];
 type SortCriteria = 'name' | 'category' | 'type' | 'date';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  // #mobile, #games osv. öppnar rätt sida direkt (används av redirects från gamla sajten)
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    const hash = window.location.hash.replace('#', '');
+    const pages: Page[] = ['dashboard', 'library', 'games', 'projects', 'ai-features', 'private', 'shared', 'system', 'mobile'];
+    return (pages as string[]).includes(hash) ? (hash as Page) : 'dashboard';
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [isSettingsUnlocked, setIsSettingsUnlocked] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navigate = (page: Page) => {
+    setCurrentPage(page);
+    setMenuOpen(false);
+  };
+
+  // Lås bakgrundsscroll när mobilmenyn är öppen
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('alexcloud-favorites') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('alexcloud-favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Sök över alla publika appar och spel (privata/systemappar ligger inte i bundlen)
+  const query = searchQuery.trim().toLowerCase();
+  const searchResults = query.length >= 2
+    ? [
+        ...APPS.map((a) => ({ app: a, group: 'App' })),
+        ...GAMES.map((a) => ({ app: a, group: 'Spel' })),
+        ...SHARED_APPS.map((a) => ({ app: a, group: 'Andras appar' })),
+      ]
+        .filter(({ app }) =>
+          app.title.toLowerCase().includes(query) ||
+          app.description.toLowerCase().includes(query) ||
+          app.category.toLowerCase().includes(query) ||
+          app.tags.some((t) => t.toLowerCase().includes(query))
+        )
+        .slice(0, 8)
+    : [];
 
   const toggleFavorite = (id: string) => {
-    setFavorites(prev => 
+    setFavorites(prev =>
       prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
     );
-  };
-
-  const handleSettingsClick = () => {
-    if (isSettingsUnlocked) {
-      setCurrentPage('settings');
-    } else {
-      setShowPasswordModal(true);
-    }
-  };
-
-  const handlePasswordSubmit = (password: string) => {
-    if (password === 'admin') {
-      setIsSettingsUnlocked(true);
-      setShowPasswordModal(false);
-      setCurrentPage('settings');
-    } else {
-      alert('Fel lösenord!');
-    }
   };
 
   const renderContent = () => {
@@ -97,10 +123,40 @@ export default function App() {
         );
       case 'projects':
         return <ProjectsPage onBack={() => setCurrentPage('dashboard')} />;
-      case 'settings':
-        return <SettingsPage onBack={() => setCurrentPage('dashboard')} />;
+      case 'private':
+        return (
+          <ProtectedAppsPage
+            endpoint="/api/private-apps"
+            title="Övriga appar"
+            description="Personliga appar. Ange lösenord för att visa listan."
+            onBack={() => setCurrentPage('dashboard')}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+          />
+        );
+      case 'system':
+        return (
+          <ProtectedAppsPage
+            endpoint="/api/system-apps"
+            title="Systemappar"
+            description="Serververktyg. Ange lösenord för att visa listan."
+            onBack={() => setCurrentPage('dashboard')}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+          />
+        );
+      case 'shared':
+        return (
+          <SharedAppsPage
+            onBack={() => setCurrentPage('dashboard')}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+          />
+        );
       case 'ai-features':
         return <AIFeaturesPage onBack={() => setCurrentPage('dashboard')} />;
+      case 'mobile':
+        return <MobileAppsPage onBack={() => setCurrentPage('dashboard')} />;
       default:
         return <DashboardHome onNavigate={setCurrentPage} />;
     }
@@ -108,15 +164,6 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-surface selection:bg-primary-container selection:text-on-primary-container">
-      <AnimatePresence>
-        {showPasswordModal && (
-          <PasswordModal 
-            onClose={() => setShowPasswordModal(false)} 
-            onSubmit={handlePasswordSubmit} 
-          />
-        )}
-      </AnimatePresence>
-
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col border-r border-white/5 bg-surface-container-low py-6 shadow-2xl md:flex z-40">
         <div className="px-6 mb-10">
@@ -132,67 +179,131 @@ export default function App() {
         </div>
 
         <nav className="flex-1 space-y-1">
-          <SidebarLink 
-            active={currentPage === 'dashboard'} 
-            onClick={() => setCurrentPage('dashboard')}
-            icon={<LayoutDashboard size={18} />}
-            label="Översikt"
-          />
-          <SidebarLink 
-            active={currentPage === 'projects'} 
-            onClick={() => setCurrentPage('projects')}
-            icon={<Briefcase size={18} />}
-            label="Projekt"
-          />
-          <SidebarLink 
-            active={currentPage === 'library'} 
-            onClick={() => setCurrentPage('library')}
-            icon={<Library size={18} />}
-            label="Appbibliotek"
-          />
-          <SidebarLink 
-            active={currentPage === 'games'} 
-            onClick={() => setCurrentPage('games')}
-            icon={<Gamepad2 size={18} />}
-            label="Spelbibliotek"
-          />
-          <SidebarLink 
-            active={currentPage === 'ai-features'} 
-            onClick={() => setCurrentPage('ai-features')}
-            icon={<Bot size={18} />}
-            label="AI Funktioner"
-          />
-          <SidebarLink 
-            active={currentPage === 'settings'} 
-            onClick={handleSettingsClick}
-            icon={isSettingsUnlocked ? <Settings size={18} /> : <Lock size={18} />}
-            label="Inställningar"
-          />
+          {NAV_ITEMS.map((item) => (
+            <SidebarLink
+              key={item.page}
+              active={currentPage === item.page}
+              onClick={() => navigate(item.page)}
+              icon={item.icon}
+              label={item.label}
+            />
+          ))}
         </nav>
 
-        <div className="mt-auto px-4 space-y-1">
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-xs text-white/60 transition-all hover:bg-surface-container">
-            <HelpCircle size={14} />
-            Support
-          </button>
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-xs text-error/80 transition-all hover:bg-error/5">
-            <LogOut size={14} />
-            Logga ut
-          </button>
-        </div>
       </aside>
+
+      {/* Mobilmeny (hamburgare) */}
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.2 }}
+              className="fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/5 bg-surface-container-low py-6 shadow-2xl md:hidden"
+            >
+              <div className="px-6 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-container">
+                    <Cloud className="text-on-primary-container" size={20} />
+                  </div>
+                  <div>
+                    <h1 className="font-headline text-base font-extrabold tracking-tight text-primary-container">AlexCloud</h1>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Ledningspanel</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg p-2 text-white/60 hover:bg-surface-container hover:text-white"
+                  aria-label="Stäng meny"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Sök i mobilmenyn */}
+              <div className="px-4 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Sök appar och spel..."
+                    className="w-full rounded-full border-none bg-surface-container-lowest py-2 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-primary/40"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                {query.length >= 2 && (
+                  <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high">
+                    {searchResults.length === 0 ? (
+                      <p className="p-3 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
+                    ) : (
+                      searchResults.map(({ app, group }) => (
+                        <a
+                          key={`m-${group}-${app.id}`}
+                          href={app.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => { setSearchQuery(''); setMenuOpen(false); }}
+                          className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-container-highest"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
+                            {app.bannerEmoji || app.icon}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-white">{app.title}</span>
+                            <span className="block truncate text-[10px] text-white/40">{group}</span>
+                          </span>
+                        </a>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <nav className="flex-1 space-y-1">
+                {NAV_ITEMS.map((item) => (
+                  <SidebarLink
+                    key={item.page}
+                    active={currentPage === item.page}
+                    onClick={() => navigate(item.page)}
+                    icon={item.icon}
+                    label={item.label}
+                  />
+                ))}
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 md:ml-64">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/5 bg-surface/80 px-8 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <h2 className="font-headline text-xl font-bold tracking-tight text-white">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/5 bg-surface/80 px-4 sm:px-8 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="rounded-lg p-2 text-white/60 transition-colors hover:bg-surface-container hover:text-white md:hidden"
+              aria-label="Öppna meny"
+            >
+              <Menu size={22} />
+            </button>
+            <h2 className="font-headline text-lg sm:text-xl font-bold tracking-tight text-white truncate">
               {currentPage === 'dashboard' ? 'Hemserver' : 
                currentPage === 'library' ? 'Appbibliotek' : 
                currentPage === 'games' ? 'Spelbibliotek' : 
                currentPage === 'projects' ? 'Projekt' : 
                currentPage === 'ai-features' ? 'AI Funktioner' :
+               currentPage === 'mobile' ? 'Mobilappar' :
                'Systeminställningar'}
             </h2>
           </div>
@@ -200,31 +311,61 @@ export default function App() {
           <div className="flex items-center gap-6">
             <div className="relative hidden lg:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={16} />
-              <input 
-                type="text" 
-                placeholder="Sök..."
+              <input
+                type="text"
+                placeholder="Sök appar och spel..."
                 className="w-64 rounded-full border-none bg-surface-container-lowest py-1.5 pl-10 pr-4 text-xs text-white focus:ring-1 focus:ring-primary/40"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    setSearchOpen(false);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
               />
+              {searchOpen && query.length >= 2 && (
+                <div className="absolute right-0 top-full mt-2 w-96 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high shadow-2xl">
+                  {searchResults.length === 0 ? (
+                    <p className="p-4 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
+                  ) : (
+                    searchResults.map(({ app, group }) => (
+                      <a
+                        key={`${group}-${app.id}`}
+                        href={app.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setSearchQuery('')}
+                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-container-highest"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
+                          {app.bannerEmoji || app.icon}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-white">{app.title}</span>
+                          <span className="block truncate text-[10px] text-white/40">{app.description}</span>
+                        </span>
+                        <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/40">
+                          {group}
+                        </span>
+                      </a>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-4">
-              <button className="rounded-lg p-2 text-white/60 transition-all hover:bg-surface-container hover:text-white">
-                <Bell size={20} />
-              </button>
-              <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-surface-container-high">
-                <img 
-                  src="https://picsum.photos/seed/alex/100/100" 
-                  alt="Avatar" 
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-primary-container font-headline text-sm font-black text-on-primary-container">
+                A
               </div>
             </div>
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage}
@@ -258,40 +399,152 @@ function SidebarLink({ active, onClick, icon, label }: { active: boolean, onClic
   );
 }
 
+interface SystemStats {
+  cpuPercent: number;
+  ramUsedGb: number;
+  ramTotalGb: number;
+  uptimeSec: number;
+  loadAvg: number[];
+  cpuCount: number;
+  tempC: number | null;
+  diskUsedPercent: number;
+  diskFreeGb: number;
+  externalIp: string | null;
+  events: { time: string; msg: string; type: 'info' | 'success' | 'warning' }[];
+}
+
+type LiveStatus = 'up' | 'down';
+type AppStatusMap = Record<string, LiveStatus>;
+
+// Hämtar riktig upp/ner-status för publika appar från servern (cachas där i 2 min)
+function useAppStatuses(): AppStatusMap {
+  const [statuses, setStatuses] = useState<AppStatusMap>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchStatuses = async () => {
+      try {
+        const res = await fetch('/api/app-status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setStatuses(data.statuses || {});
+      } catch {
+        // behåll senaste kända värden
+      }
+    };
+    fetchStatuses();
+    const interval = setInterval(fetchStatuses, 120000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  return statuses;
+}
+
+function StatusBadge({ status }: { status?: LiveStatus }) {
+  if (!status) return null;
+  const up = status === 'up';
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-1.5 w-1.5 rounded-full ${up ? 'bg-secondary-container shadow-[0_0_8px_#34ff8d] animate-pulse' : 'bg-error shadow-[0_0_8px_#ff4d4d]'}`} />
+      <span className={`text-[10px] font-bold uppercase tracking-widest ${up ? 'text-secondary-container' : 'text-error'}`}>
+        {up ? 'Online' : 'Offline'}
+      </span>
+    </span>
+  );
+}
+
+function formatUptime(sec: number): string {
+  const days = Math.floor(sec / 86400);
+  if (days >= 1) return `${days}d`;
+  const hours = Math.floor(sec / 3600);
+  if (hours >= 1) return `${hours}h`;
+  return `${Math.floor(sec / 60)}m`;
+}
+
+function formatEventTime(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const hhmm = d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  return sameDay ? hhmm : `${d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })} ${hhmm}`;
+}
+
 function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
+  const [stats, setStats] = useState<SystemStats | null>(null);
+  const appStatuses = useAppStatuses();
+  const statusEntries = Object.entries(appStatuses);
+  const upCount = statusEntries.filter(([, s]) => s === 'up').length;
+  const downApps = statusEntries.filter(([, s]) => s === 'down').map(([id]) => id);
+
+  // Hero-statusen styrs av riktiga värden istället för att alltid säga "Optimal"
+  const issues: string[] = [];
+  if (downApps.length > 0) issues.push(`${downApps.length} ${downApps.length === 1 ? 'app nere' : 'appar nere'}`);
+  if (stats?.tempC != null && stats.tempC >= 75) issues.push('hög temperatur');
+  if (stats && stats.loadAvg[0] / stats.cpuCount >= 0.9) issues.push('hög belastning');
+  if (stats && stats.diskUsedPercent >= 90) issues.push('disken nästan full');
+  const systemOk = issues.length === 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/system-stats');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setStats(data);
+      } catch {
+        // behåll senaste kända värden
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
   return (
     <div className="space-y-12">
       {/* Hero Section - Editorial Style */}
-      <section className="relative overflow-hidden rounded-3xl bg-surface-container-low p-12">
-        <div className="absolute right-0 top-0 h-full w-1/2 opacity-20">
-          <img 
-            src="https://picsum.photos/seed/server/800/600" 
-            alt="Hero" 
+      <section className="relative overflow-hidden rounded-3xl bg-surface-container-low p-6 sm:p-12">
+        <div className="absolute right-0 top-0 h-full w-1/2 opacity-30">
+          <img
+            src="https://databasen.alexcloud.se/assets/f786d29a-0bcd-46d1-b990-eeefd96261b6?width=1200"
+            alt="Serverrack med blå belysning"
             className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-surface-container-low to-transparent" />
+          <a
+            href="https://www.pexels.com/photo/close-up-of-a-blue-server-rack-in-datacenter-37730211/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-2 right-3 text-[9px] text-white/20 hover:text-white/50 transition-colors"
+          >
+            Foto: panumas nikhomkhai / Pexels
+          </a>
         </div>
         
         <div className="relative z-10 max-w-2xl">
           <div className="mb-4 flex items-center gap-2">
-            <span className="rounded-full bg-primary-container/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-container">
-              Systemstatus: Optimal
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+              systemOk ? 'bg-primary-container/20 text-primary-container' : 'bg-error/20 text-error'
+            }`}>
+              {systemOk ? 'Systemstatus: Optimal' : `Systemstatus: ${issues.join(' · ')}`}
             </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-secondary-container shadow-[0_0_8px_#34ff8d]" />
+            <span className={`h-1.5 w-1.5 rounded-full ${
+              systemOk ? 'bg-secondary-container shadow-[0_0_8px_#34ff8d]' : 'bg-error shadow-[0_0_8px_#ff4d4d] animate-pulse'
+            }`} />
           </div>
-          <h1 className="font-headline text-6xl font-black leading-none tracking-tighter text-white mb-6 uppercase">
+          <h1 className="font-headline text-4xl sm:text-6xl font-black leading-none tracking-tighter text-white mb-6 uppercase">
             AlexCloud <span className="text-primary-container">Plattform</span>
           </h1>
-          <p className="text-lg text-white/40 mb-8 max-w-lg leading-relaxed">
+          <p className="text-base sm:text-lg text-white/40 mb-8 max-w-lg leading-relaxed">
             Välkommen till min centrala hubb för infrastruktur, personliga applikationer och datadriven analys. 
             Allt körs säkert på Ubuntu & Docker.
           </p>
           
-          <div className="flex items-center gap-8">
-            <StatItem icon={<Cpu size={16} />} label="CPU" value="12%" />
-            <StatItem icon={<Database size={16} />} label="RAM" value="4.2GB" />
-            <StatItem icon={<Activity size={16} />} label="Uptime" value="14d" />
+          <div className="flex flex-wrap items-center gap-4 sm:gap-8">
+            <StatItem icon={<Cpu size={16} />} label="CPU" value={stats ? `${stats.cpuPercent}%` : '–'} />
+            <StatItem icon={<Database size={16} />} label="RAM" value={stats ? `${stats.ramUsedGb}GB` : '–'} />
+            <StatItem icon={<Activity size={16} />} label="Uptime" value={stats ? formatUptime(stats.uptimeSec) : '–'} />
           </div>
         </div>
       </section>
@@ -300,9 +553,6 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
       <section>
         <div className="mb-6 flex items-center justify-between">
           <h3 className="font-headline text-xl font-bold text-white">Aktiva Tjänster</h3>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Sortera efter: Senast använda</span>
-          </div>
         </div>
         
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,6 +563,8 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
               onClick={() => {
                 if (item.type === 'page') {
                   onNavigate(item.target as Page);
+                } else {
+                  window.open(item.target, '_blank', 'noopener');
                 }
               }}
             />
@@ -323,11 +575,15 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
       {/* Secondary Section - Quick Links */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="rounded-2xl bg-surface-container p-6 border border-white/5">
-          <h4 className="font-headline text-sm font-bold uppercase tracking-widest text-white/40 mb-4">Senaste Loggar</h4>
+          <h4 className="font-headline text-sm font-bold uppercase tracking-widest text-white/40 mb-4">Senaste Händelser</h4>
           <div className="space-y-3">
-            <LogItem time="14:22" msg="Docker container 'plex' omstartad" type="info" />
-            <LogItem time="12:05" msg="Säkerhetskopiering slutförd" type="success" />
-            <LogItem time="09:15" msg="Ny inloggning från IP 192.168.1.45" type="warning" />
+            {stats ? (
+              stats.events.map((ev) => (
+                <LogItem key={ev.msg} time={formatEventTime(ev.time)} msg={ev.msg} type={ev.type} />
+              ))
+            ) : (
+              <p className="text-xs text-white/20">Hämtar händelser…</p>
+            )}
           </div>
         </div>
         <div className="rounded-2xl bg-surface-container p-6 border border-white/5">
@@ -342,7 +598,7 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">Extern IP</p>
-                  <p className="text-[10px] text-white/40">85.226.112.XX</p>
+                  <p className="text-[10px] text-white/40">{stats?.externalIp || '–'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -359,8 +615,12 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Temperatur</span>
                 </div>
                 <div className="flex items-end gap-1">
-                  <span className="text-lg font-bold text-white">42°C</span>
-                  <span className="text-[10px] text-secondary-container mb-1">Normal</span>
+                  <span className="text-lg font-bold text-white">{stats?.tempC != null ? `${stats.tempC}°C` : '–'}</span>
+                  {stats?.tempC != null && (
+                    <span className={`text-[10px] mb-1 ${stats.tempC < 75 ? 'text-secondary-container' : 'text-error'}`}>
+                      {stats.tempC < 75 ? 'Normal' : 'Hög'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -370,10 +630,40 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Lagring</span>
                 </div>
                 <div className="flex items-end gap-1">
-                  <span className="text-lg font-bold text-white">64%</span>
-                  <span className="text-[10px] text-white/20 mb-1">2.4TB kvar</span>
+                  <span className="text-lg font-bold text-white">{stats ? `${stats.diskUsedPercent}%` : '–'}</span>
+                  {stats && (
+                    <span className="text-[10px] text-white/20 mb-1">
+                      {stats.diskFreeGb >= 1000 ? `${(stats.diskFreeGb / 1000).toFixed(1)}TB` : `${stats.diskFreeGb}GB`} kvar
+                    </span>
+                  )}
                 </div>
               </div>
+            </div>
+
+            {/* Tjänster online */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-lowest border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary-container/10">
+                  <Activity className="text-primary-container" size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Tjänster online</p>
+                  <p className="text-[10px] text-white/40">
+                    {statusEntries.length === 0
+                      ? 'Kontrollerar…'
+                      : downApps.length === 0
+                        ? `Alla ${statusEntries.length} appar svarar`
+                        : `Nere: ${downApps
+                            .map((id) => [...APPS, ...GAMES, ...SHARED_APPS].find((a) => a.id === id)?.title || id)
+                            .join(', ')}`}
+                  </p>
+                </div>
+              </div>
+              {statusEntries.length > 0 && (
+                <span className={`text-sm font-bold ${downApps.length === 0 ? 'text-secondary-container' : 'text-error'}`}>
+                  {upCount}/{statusEntries.length}
+                </span>
+              )}
             </div>
 
             {/* Load Item */}
@@ -384,11 +674,16 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">System Load</p>
-                  <p className="text-[10px] text-white/40">Load Avg: 0.45, 0.32, 0.28</p>
+                  <p className="text-[10px] text-white/40">
+                    Load Avg: {stats ? stats.loadAvg.map((l) => l.toFixed(2)).join(', ') : '–'}
+                  </p>
                 </div>
               </div>
               <div className="h-1 w-16 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-primary-container w-[45%]" />
+                <div
+                  className="h-full bg-primary-container"
+                  style={{ width: `${stats ? Math.min(100, Math.round((stats.loadAvg[0] / stats.cpuCount) * 100)) : 0}%` }}
+                />
               </div>
             </div>
           </div>
@@ -426,8 +721,6 @@ function LogItem({ time, msg, type }: { time: string, msg: string, type: 'info' 
 }
 
 function DashboardCard({ item, onClick }: { item: DashboardItem, onClick: () => void, key?: string }) {
-  const imageSeed = `${item.title.toLowerCase().replace(/\s+/g, '-')}-service`;
-
   return (
     <motion.button
       whileHover={{ 
@@ -439,14 +732,16 @@ function DashboardCard({ item, onClick }: { item: DashboardItem, onClick: () => 
       onClick={onClick}
       className="group relative overflow-hidden rounded-3xl bg-surface-container text-left shadow-2xl transition-all hover:bg-surface-container-high border border-white/5"
     >
-      <div className="relative h-48 w-full overflow-hidden">
-        <img 
-          src={`https://picsum.photos/seed/${imageSeed}/800/600`} 
-          alt={item.title}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/20 to-transparent" />
+      <div
+        className="relative flex h-48 w-full items-center justify-center overflow-hidden"
+        style={{ background: item.banner || 'linear-gradient(135deg, #1a1a2e, #16213e)' }}
+      >
+        {item.bannerEmoji && (
+          <span className="text-7xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform duration-700 group-hover:scale-125">
+            {item.bannerEmoji}
+          </span>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent" />
         
         {/* Type Badge */}
         <div className="absolute left-4 top-4 z-10">
@@ -486,6 +781,7 @@ function DashboardCard({ item, onClick }: { item: DashboardItem, onClick: () => 
 function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<SortCriteria>('date');
   const sortedApps = sortApps(APPS, sortBy);
+  const statuses = useAppStatuses();
 
   return (
     <div className="space-y-8">
@@ -502,11 +798,12 @@ function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => vo
 
       <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {sortedApps.map((app) => (
-          <AppCard 
-            key={app.id} 
-            app={app} 
+          <AppCard
+            key={app.id}
+            app={app}
             isFavorite={favorites.includes(app.id)}
             onToggleFavorite={() => onToggleFavorite(app.id)}
+            liveStatus={statuses[app.id]}
           />
         ))}
       </div>
@@ -517,9 +814,10 @@ function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => vo
 function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<SortCriteria>('date');
   const sortedGames = sortApps(GAMES, sortBy);
+  const statuses = useAppStatuses();
 
   return (
-    <div className="relative -m-8 min-h-screen starfield p-8">
+    <div className="relative -m-4 sm:-m-8 min-h-screen starfield p-4 sm:p-8">
       <div className="relative z-10 space-y-12">
         <div className="flex flex-col gap-8 items-center text-center">
           <button 
@@ -533,7 +831,7 @@ function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4">
               <Gamepad2 size={48} className="text-primary-container animate-pulse" />
-              <h1 className="font-headline text-7xl font-black tracking-[0.2em] text-white neon-text uppercase italic">
+              <h1 className="font-headline text-4xl sm:text-7xl font-black tracking-[0.15em] sm:tracking-[0.2em] text-white neon-text uppercase italic">
                 SPEL<span className="text-primary-container">ARKIVET</span>
               </h1>
             </div>
@@ -556,11 +854,12 @@ function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void
 
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {sortedGames.map((game) => (
-            <GameCard 
-              key={game.id} 
-              game={game} 
+            <GameCard
+              key={game.id}
+              game={game}
               isFavorite={favorites.includes(game.id)}
               onToggleFavorite={() => onToggleFavorite(game.id)}
+              liveStatus={statuses[game.id]}
             />
           ))}
           
@@ -581,46 +880,66 @@ function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void
   );
 }
 
-function GameCard({ game, isFavorite, onToggleFavorite }: { game: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, key?: string }) {
+function GameCard({ game, isFavorite, onToggleFavorite, liveStatus }: { game: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, key?: string }) {
   return (
-    <motion.div
-      whileHover={{ 
+    <motion.a
+      href={game.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      whileHover={{
         y: -12,
         scale: 1.05,
       }}
-      className="group relative overflow-hidden rounded-3xl bg-[#0d1e25] border border-primary-container/10 neon-border"
+      className="group relative block overflow-hidden rounded-3xl bg-[#0d1e25] border border-primary-container/10 neon-border"
     >
-      <div className="relative h-56 w-full game-grid-bg overflow-hidden flex items-center justify-center">
+      <div
+        className="relative h-56 w-full game-grid-bg overflow-hidden flex items-center justify-center"
+        style={game.banner ? { background: game.banner } : undefined}
+      >
+        {game.bannerImage && (
+          <img
+            src={game.bannerImage}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        )}
+        {game.bannerImage && (
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1e25] via-transparent to-black/20" />
+        )}
         {/* Animated Grid Background */}
         <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
-        
+
         {/* Floating Icon with Glow */}
-        <motion.div 
-          animate={{ 
-            y: [0, -10, 0],
-            rotate: [0, 5, -5, 0]
-          }}
-          transition={{ 
-            duration: 4, 
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="relative z-10 text-7xl drop-shadow-[0_0_20px_rgba(79,156,255,0.8)]"
-        >
-          {game.icon}
-        </motion.div>
+        {!game.bannerImage && (
+          <motion.div
+            animate={{
+              y: [0, -10, 0],
+              rotate: [0, 5, -5, 0]
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="relative z-10 text-7xl drop-shadow-[0_0_20px_rgba(79,156,255,0.8)]"
+          >
+            {game.icon}
+          </motion.div>
+        )}
         
         {/* Favorite Button */}
-        <button 
+        <button
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             onToggleFavorite();
           }}
           className="absolute right-4 top-4 z-20"
         >
-          <Heart 
-            size={20} 
-            className={`transition-all ${isFavorite ? 'fill-primary-container text-primary-container scale-125' : 'text-white/20 hover:text-white hover:scale-110'}`} 
+          <Heart
+            size={20}
+            className={`transition-all ${isFavorite ? 'fill-primary-container text-primary-container scale-125' : 'text-white/20 hover:text-white hover:scale-110'}`}
           />
         </button>
 
@@ -648,16 +967,19 @@ function GameCard({ game, isFavorite, onToggleFavorite }: { game: AppDefinition,
 
         <div className="flex items-center justify-between pt-4 border-t border-white/5">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-secondary-container animate-pulse shadow-[0_0_8px_#34ff8d]" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Online</span>
+            {liveStatus ? (
+              <StatusBadge status={liveStatus} />
+            ) : (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">–</span>
+            )}
           </div>
-          <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-container group-hover:translate-x-1 transition-transform">
+          <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary-container group-hover:translate-x-1 transition-transform">
             SPELA NU
             <ChevronRight size={14} />
-          </button>
+          </span>
         </div>
       </div>
-    </motion.div>
+    </motion.a>
   );
 }
 
@@ -701,23 +1023,24 @@ function sortApps(apps: AppDefinition[], criteria: SortCriteria) {
   });
 }
 
-function AppCard({ app, isFavorite, onToggleFavorite }: { app: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, key?: string }) {
-  // Create a dynamic image seed based on title and category
-  const imageSeed = `${app.title.toLowerCase().replace(/\s+/g, '-')}-${app.category.toLowerCase()}`;
-  
+function AppCard({ app, isFavorite, onToggleFavorite, liveStatus }: { app: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, key?: string }) {
   return (
-    <motion.div
-      whileHover={{ 
-        y: -8, 
+    <motion.a
+      href={app.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      whileHover={{
+        y: -8,
         scale: 1.02,
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
       }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="group relative overflow-hidden rounded-3xl bg-surface-container shadow-2xl transition-all hover:bg-surface-container-high border border-white/5"
+      className="group relative block overflow-hidden rounded-3xl bg-surface-container shadow-2xl transition-all hover:bg-surface-container-high border border-white/5"
     >
       {/* Favorite Button */}
-      <button 
+      <button
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           onToggleFavorite();
         }}
@@ -741,14 +1064,24 @@ function AppCard({ app, isFavorite, onToggleFavorite }: { app: AppDefinition, is
         </motion.div>
       </button>
 
-      <div className="relative h-56 w-full overflow-hidden">
-        <img 
-          src={`https://picsum.photos/seed/${imageSeed}/800/600`} 
-          alt={app.title}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/20 to-transparent" />
+      <div
+        className="relative flex h-56 w-full items-center justify-center overflow-hidden"
+        style={{ background: app.banner || 'linear-gradient(135deg, #1a1a2e, #16213e)' }}
+      >
+        {app.bannerImage && (
+          <img
+            src={app.bannerImage}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        )}
+        {!app.bannerImage && app.bannerEmoji && (
+          <span className="text-8xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform duration-700 group-hover:scale-125">
+            {app.bannerEmoji}
+          </span>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent" />
         
         {/* Category Badge */}
         <div className="absolute left-4 top-4 z-10">
@@ -765,6 +1098,7 @@ function AppCard({ app, isFavorite, onToggleFavorite }: { app: AppDefinition, is
       <div className="p-8">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-headline text-2xl font-bold text-white tracking-tight">{app.title}</h3>
+          <StatusBadge status={liveStatus} />
         </div>
         
         <div className="mb-4 flex flex-wrap gap-2">
@@ -779,12 +1113,142 @@ function AppCard({ app, isFavorite, onToggleFavorite }: { app: AppDefinition, is
           {app.description}
         </p>
 
-        <button className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] py-3.5 text-sm font-bold text-white transition-all hover:from-primary-container/20 hover:to-primary/10 hover:border-primary/30 group/btn">
+        <span className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] py-3.5 text-sm font-bold text-white transition-all hover:from-primary-container/20 hover:to-primary/10 hover:border-primary/30 group/btn">
           Öppna Applikation
           <ExternalLink size={16} className="transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
-        </button>
+        </span>
       </div>
-    </motion.div>
+    </motion.a>
+  );
+}
+
+function SharedAppsPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
+  const [sortBy, setSortBy] = useState<SortCriteria>('date');
+  const sortedApps = sortApps(SHARED_APPS, sortBy);
+  const statuses = useAppStatuses();
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Tillbaka till Översikt
+        </button>
+        {sortedApps.length > 0 && <SortControl current={sortBy} onChange={setSortBy} />}
+      </div>
+
+      {sortedApps.length === 0 ? (
+        <div className="rounded-3xl bg-surface-container-low p-16 text-center border border-white/5">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-surface-container text-primary-container">
+            <Users size={40} />
+          </div>
+          <h2 className="font-headline text-2xl font-bold text-white mb-3">Andras appar</h2>
+          <p className="text-white/40 max-w-md mx-auto leading-relaxed">
+            Här samlas appar som andra delat med sig av, t.ex. på GitHub. Inga appar är tillagda än.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {sortedApps.map((app) => (
+            <AppCard
+              key={app.id}
+              app={app}
+              isFavorite={favorites.includes(app.id)}
+              onToggleFavorite={() => onToggleFavorite(app.id)}
+              liveStatus={statuses[app.id]}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProtectedAppsPage({ endpoint, title, description, onBack, favorites, onToggleFavorite }: { endpoint: string, title: string, description: string, onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
+  const [password, setPassword] = useState('');
+  const [apps, setApps] = useState<AppDefinition[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        setApps(await res.json());
+      } else {
+        setError('Fel lösenord. Försök igen.');
+      }
+    } catch (err) {
+      setError('Något gick fel. Försök igen.');
+    } finally {
+      setLoading(false);
+      setPassword('');
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white"
+      >
+        <ArrowLeft size={16} />
+        Tillbaka till Översikt
+      </button>
+
+      {!apps ? (
+        <div className="mx-auto max-w-md rounded-3xl bg-surface-container p-8 border border-white/10 shadow-2xl">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-container/10 text-primary-container">
+              <Lock size={32} />
+            </div>
+            <h2 className="font-headline text-2xl font-bold text-white mb-2">{title}</h2>
+            <p className="text-white/40 text-sm">{description}</p>
+          </div>
+
+          <form onSubmit={handleUnlock}>
+            <input
+              autoFocus
+              type="password"
+              placeholder="Lösenord"
+              className="w-full rounded-2xl border border-white/10 bg-surface-container-lowest p-4 text-white focus:ring-2 focus:ring-primary-container mb-4"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
+            {error && <p className="mb-4 text-sm font-bold text-error">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading || !password}
+              className="w-full rounded-2xl bg-primary-container py-4 text-sm font-bold text-on-primary-container hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? 'Låser upp…' : 'Lås upp'}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {apps.map((app) => (
+            <AppCard
+              key={app.id}
+              app={app}
+              isFavorite={favorites.includes(app.id)}
+              onToggleFavorite={() => onToggleFavorite(app.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -802,15 +1266,14 @@ function ProjectsPage({ onBack }: { onBack: () => void }) {
         fetch('/api/github/repos')
       ]);
 
-      if (userRes.ok && reposRes.ok) {
-        const userData = await userRes.json();
+      setUser(userRes.ok ? await userRes.json() : null);
+      if (reposRes.ok) {
         const reposData = await reposRes.json();
-        setUser(userData);
-        setRepos(reposData);
+        setRepos(Array.isArray(reposData) ? reposData : []);
         setError(null);
       } else {
-        setUser(null);
         setRepos([]);
+        setError('Kunde inte hämta GitHub-repos');
       }
     } catch (err) {
       console.error("Error fetching GitHub data:", err);
@@ -867,43 +1330,48 @@ function ProjectsPage({ onBack }: { onBack: () => void }) {
         )}
       </div>
 
-      {!user ? (
+      {loading ? (
         <div className="rounded-3xl bg-surface-container-low p-16 text-center border border-white/5">
-          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-surface-container text-primary-container shadow-2xl shadow-primary/10">
-            <Briefcase size={48} />
-          </div>
-          <h2 className="font-headline text-4xl font-black text-white mb-6 uppercase tracking-tight">Projektarkiv</h2>
-          <p className="text-white/40 max-w-md mx-auto leading-relaxed mb-10">
-            Anslut ditt GitHub-konto för att synkronisera dina repon och hantera dina projekt direkt från AlexCloud.
-          </p>
-          <button 
-            onClick={handleConnect}
-            className="inline-flex items-center gap-3 rounded-full bg-primary-container px-8 py-4 font-headline text-sm font-black uppercase tracking-widest text-on-primary-container transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/20"
-          >
-            Anslut GitHub
-            <ExternalLink size={18} />
-          </button>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest">Hämtar projekt från GitHub…</p>
         </div>
       ) : (
         <div className="space-y-8">
           {/* User Profile Header */}
-          <div className="flex items-center justify-between rounded-3xl bg-surface-container p-8 border border-white/5">
-            <div className="flex items-center gap-6">
-              <div className="h-20 w-20 overflow-hidden rounded-2xl border-2 border-primary-container/20">
-                <img src={user.avatar_url} alt={user.login} className="h-full w-full object-cover" />
+          {user ? (
+            <div className="flex items-center justify-between rounded-3xl bg-surface-container p-8 border border-white/5">
+              <div className="flex items-center gap-6">
+                <div className="h-20 w-20 overflow-hidden rounded-2xl border-2 border-primary-container/20">
+                  <img src={user.avatar_url} alt={user.login} className="h-full w-full object-cover" />
+                </div>
+                <div>
+                  <h2 className="font-headline text-2xl font-black text-white">{user.name || user.login}</h2>
+                  <p className="text-sm text-white/40">@{user.login} • {user.public_repos} Repositories</p>
+                </div>
               </div>
+              <div className="hidden md:flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Status</p>
+                  <p className="text-sm font-bold text-secondary-container">Synkroniserad</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl bg-surface-container p-8 border border-white/5">
               <div>
-                <h2 className="font-headline text-2xl font-black text-white">{user.name || user.login}</h2>
-                <p className="text-sm text-white/40">@{user.login} • {user.public_repos} Repositories</p>
+                <h2 className="font-headline text-2xl font-black text-white mb-1">Projektarkiv</h2>
+                <p className="text-sm text-white/40">
+                  {error ? error : 'Publika GitHub-repos för @alexrabnor. Anslut GitHub för att även se privata repos.'}
+                </p>
               </div>
+              <button
+                onClick={handleConnect}
+                className="inline-flex items-center gap-3 rounded-full bg-primary-container px-6 py-3 font-headline text-xs font-black uppercase tracking-widest text-on-primary-container transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/20"
+              >
+                Anslut GitHub
+                <ExternalLink size={16} />
+              </button>
             </div>
-            <div className="hidden md:flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">Status</p>
-                <p className="text-sm font-bold text-secondary-container">Synkroniserad</p>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Repos Grid */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -945,7 +1413,15 @@ function ProjectsPage({ onBack }: { onBack: () => void }) {
 }
 
 function AIFeaturesPage({ onBack }: { onBack: () => void }) {
-  const aiTools = [
+  const aiTools: {
+    id: string;
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    status: string;
+    tags: string[];
+    url?: string;
+  }[] = [
     {
       id: 'assistant',
       title: 'AI Assistent',
@@ -967,8 +1443,9 @@ function AIFeaturesPage({ onBack }: { onBack: () => void }) {
       title: 'Bildgenerering',
       description: 'Skapa unika bilder med AI direkt i din dashboard.',
       icon: <Cloud size={24} />,
-      status: 'coming-soon',
-      tags: ['Kreativt', 'Imagen']
+      status: 'active',
+      tags: ['Kreativt', 'Imagen'],
+      url: 'https://bilder.alexcloud.se/'
     }
   ];
 
@@ -1009,9 +1486,20 @@ function AIFeaturesPage({ onBack }: { onBack: () => void }) {
             </div>
 
             {tool.status === 'active' ? (
-              <button className="w-full rounded-xl bg-primary-container py-3 text-xs font-bold uppercase tracking-widest text-on-primary-container transition-all hover:scale-105">
-                Öppna Verktyg
-              </button>
+              tool.url ? (
+                <a
+                  href={tool.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-xl bg-primary-container py-3 text-center text-xs font-bold uppercase tracking-widest text-on-primary-container transition-all hover:scale-105"
+                >
+                  Öppna Verktyg
+                </a>
+              ) : (
+                <button className="w-full rounded-xl bg-primary-container py-3 text-xs font-bold uppercase tracking-widest text-on-primary-container transition-all hover:scale-105">
+                  Öppna Verktyg
+                </button>
+              )
             ) : (
               <div className="w-full rounded-xl bg-white/5 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-white/20">
                 Kommer snart
@@ -1022,7 +1510,7 @@ function AIFeaturesPage({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Featured AI Assistant Preview */}
-      <div className="rounded-3xl bg-surface-container p-12 border border-white/5 relative overflow-hidden">
+      <div className="rounded-3xl bg-surface-container p-6 sm:p-12 border border-white/5 relative overflow-hidden">
         <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none">
           <Bot size={400} className="text-primary-container translate-x-1/4 translate-y-1/4" />
         </div>
@@ -1046,20 +1534,105 @@ function AIFeaturesPage({ onBack }: { onBack: () => void }) {
   );
 }
 
-function SettingsPage({ onBack }: { onBack: () => void }) {
-  const [activeTab, setActiveTab] = useState<'system' | 'docker' | 'files' | 'terminal' | 'ai'>('system');
+function MobileAppCard({ app }: { app: MobileAppDefinition, key?: string }) {
+  const disabled = app.status !== 'active';
+  const isApk = app.kind === 'APK';
 
-  const tabs = [
-    { id: 'system', label: 'System', icon: <Shield size={18} /> },
-    { id: 'docker', label: 'Docker', icon: <Box size={18} /> },
-    { id: 'files', label: 'Filer', icon: <FolderOpen size={18} /> },
-    { id: 'terminal', label: 'Terminal', icon: <Terminal size={18} /> },
-    { id: 'ai', label: 'AI Assistent', icon: <Bot size={18} /> },
-  ];
+  const inner = (
+    <>
+      <div
+        className="relative flex h-44 w-full items-center justify-center overflow-hidden"
+        style={{ background: app.banner }}
+      >
+        {app.bannerImage ? (
+          <img
+            src={app.bannerImage}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : (
+          <span className="text-7xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform duration-700 group-hover:scale-125">
+            {app.bannerEmoji}
+          </span>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent" />
+        <div className="absolute left-4 top-4 z-10">
+          <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur-md border ${
+            isApk
+              ? 'bg-black/40 text-white/80 border-white/10'
+              : 'bg-primary-container/20 text-primary-container border-primary-container/30'
+          }`}>
+            {isApk ? 'Android APK' : 'PWA'}
+          </span>
+        </div>
+        <div className="absolute bottom-4 left-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-container-highest shadow-2xl text-2xl border border-white/10">
+          {app.icon}
+        </div>
+      </div>
 
+      <div className="p-8">
+        <h3 className="mb-3 font-headline text-2xl font-bold text-white tracking-tight">{app.title}</h3>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          {app.tags.map(tag => (
+            <span key={tag} className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-bold text-white/40 border border-white/5">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <p className="mb-8 text-sm leading-relaxed text-white/50 line-clamp-3">
+          {app.description}
+        </p>
+
+        {disabled ? (
+          <span className="flex w-full items-center justify-center rounded-2xl bg-white/5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-white/20">
+            Kommer snart
+          </span>
+        ) : (
+          <span className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] py-3.5 text-sm font-bold text-white transition-all hover:from-primary-container/20 hover:to-primary/10 hover:border-primary/30">
+            {isApk ? (
+              <>
+                <Download size={16} />
+                Ladda ner APK {app.fileSize && <span className="text-white/40 font-normal">({app.fileSize})</span>}
+              </>
+            ) : (
+              <>
+                Öppna &amp; installera
+                <ExternalLink size={16} />
+              </>
+            )}
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  const cardClass = `group relative block overflow-hidden rounded-3xl bg-surface-container shadow-2xl border border-white/5 ${
+    disabled ? 'opacity-60' : 'transition-all hover:bg-surface-container-high'
+  }`;
+
+  if (disabled) {
+    return <div className={cardClass}>{inner}</div>;
+  }
+  return (
+    <motion.a
+      href={app.url}
+      {...(isApk ? { download: true } : { target: '_blank', rel: 'noopener noreferrer' })}
+      whileHover={{ y: -8, scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className={cardClass}
+    >
+      {inner}
+    </motion.a>
+  );
+}
+
+function MobileAppsPage({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-8">
-      <button 
+      <button
         onClick={onBack}
         className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white"
       >
@@ -1067,502 +1640,35 @@ function SettingsPage({ onBack }: { onBack: () => void }) {
         Tillbaka till Översikt
       </button>
 
-      <div className="flex flex-col gap-8 lg:flex-row">
-        {/* Sub-navigation */}
-        <div className="w-full lg:w-64 space-y-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-primary-container text-on-primary-container shadow-lg shadow-primary/10' 
-                  : 'text-white/40 hover:bg-surface-container hover:text-white'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div className="flex-1 min-h-[600px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'system' && <SystemTab />}
-              {activeTab === 'docker' && <DockerTab />}
-              {activeTab === 'files' && <FilesTab />}
-              {activeTab === 'terminal' && <TerminalTab />}
-              {activeTab === 'ai' && <AITab />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SystemTab() {
-  const systemFiles = [
-    { name: 'package.json', size: '2.4 KB', type: 'config' },
-    { name: 'App.tsx', size: '18.2 KB', type: 'code' },
-    { name: 'constants.ts', size: '4.1 KB', type: 'data' },
-    { name: 'index.css', size: '1.2 KB', type: 'style' },
-    { name: 'vite.config.ts', size: '0.8 KB', type: 'config' },
-    { name: 'tsconfig.json', size: '1.1 KB', type: 'config' },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 gap-8">
-      <div className="rounded-3xl bg-surface-container p-8 border border-white/5">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="font-headline text-xl font-bold text-white flex items-center gap-3">
-            <Folder className="text-primary-container" size={24} />
-            Systemfiler
-          </h3>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Root: /home/alex/server</span>
-        </div>
-
-        <div className="space-y-2">
-          {systemFiles.map((file) => (
-            <div key={file.name} className="flex items-center justify-between p-4 rounded-xl bg-surface-container-lowest border border-white/5 hover:bg-surface-container-high transition-colors group cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-surface-container text-white/40 group-hover:text-primary-container transition-colors">
-                  <FileCode size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{file.name}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">{file.type}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-mono text-white/40">{file.size}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DockerTab() {
-  const [containers, setContainers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchContainers = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/docker/containers');
-      const data = await res.json();
-      setContainers(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchContainers();
-  }, []);
-
-  const handleAction = async (id: string, action: string) => {
-    await fetch('/api/docker/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action })
-    });
-    fetchContainers();
-  };
-
-  return (
-    <div className="rounded-3xl bg-surface-container p-8 border border-white/5">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="font-headline text-xl font-bold text-white flex items-center gap-3">
-          <Box className="text-primary-container" size={24} />
-          Docker Containrar
-        </h3>
-        <button onClick={fetchContainers} className="p-2 rounded-full hover:bg-white/5 text-white/40">
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/20">
-              <th className="pb-4 pl-4">Namn</th>
-              <th className="pb-4">Image</th>
-              <th className="pb-4">Status</th>
-              <th className="pb-4 pr-4 text-right">Åtgärder</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {containers.map((c) => (
-              <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                <td className="py-4 pl-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${c.state === 'running' ? 'bg-secondary-container shadow-[0_0_8px_#34ff8d]' : 'bg-error/40'}`} />
-                    <span className="text-sm font-bold text-white">{c.name}</span>
-                  </div>
-                </td>
-                <td className="py-4 text-xs text-white/40">{c.image}</td>
-                <td className="py-4 text-xs text-white/40">{c.status}</td>
-                <td className="py-4 pr-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {c.state === 'running' ? (
-                      <button onClick={() => handleAction(c.id, 'stop')} className="p-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors">
-                        <Square size={14} />
-                      </button>
-                    ) : (
-                      <button onClick={() => handleAction(c.id, 'start')} className="p-2 rounded-lg bg-secondary-container/10 text-secondary-container hover:bg-secondary-container/20 transition-colors">
-                        <Play size={14} />
-                      </button>
-                    )}
-                    <button onClick={() => handleAction(c.id, 'restart')} className="p-2 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 transition-colors">
-                      <RefreshCw size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function FilesTab() {
-  const [files, setFiles] = useState<any[]>([]);
-  const [currentPath, setCurrentPath] = useState('.');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [fileContent, setFileContent] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-
-  const fetchFiles = async (path: string) => {
-    const res = await fetch(`/api/files/list?path=${encodeURIComponent(path)}`);
-    const data = await res.json();
-    setFiles(data);
-    setCurrentPath(path);
-  };
-
-  useEffect(() => {
-    fetchFiles('.');
-  }, []);
-
-  const handleFileClick = async (file: any) => {
-    if (file.isDirectory) {
-      fetchFiles(file.path);
-    } else {
-      const res = await fetch(`/api/files/read?path=${encodeURIComponent(file.path)}`);
-      const data = await res.json();
-      setSelectedFile(file.path);
-      setFileContent(data.content);
-      setIsEditing(true);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!selectedFile) return;
-    await fetch('/api/files/write', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: selectedFile, content: fileContent })
-    });
-    setIsEditing(false);
-    setSelectedFile(null);
-  };
-
-  return (
-    <div className="rounded-3xl bg-surface-container p-8 border border-white/5 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="font-headline text-xl font-bold text-white flex items-center gap-3">
-          <FolderOpen className="text-primary-container" size={24} />
-          Smart Filhanterare
-        </h3>
-        <div className="text-[10px] font-bold uppercase tracking-widest text-white/20">
-          Sökväg: {currentPath}
-        </div>
-      </div>
-
-      {isEditing ? (
-        <div className="flex-1 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white/60">{selectedFile}</span>
-            <div className="flex gap-2">
-              <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg bg-white/5 text-white/60 text-xs font-bold hover:bg-white/10">Avbryt</button>
-              <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-on-primary-container text-xs font-bold hover:scale-105 transition-all">
-                <Save size={14} /> Spara
-              </button>
-            </div>
+      <div className="rounded-3xl bg-surface-container-low p-8 border border-white/5">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-container/10 text-primary-container">
+            <Smartphone size={24} />
           </div>
-          <textarea 
-            className="flex-1 rounded-xl bg-surface-container-lowest p-4 font-mono text-sm text-white border border-white/5 focus:ring-1 focus:ring-primary/40 resize-none"
-            value={fileContent}
-            onChange={(e) => setFileContent(e.target.value)}
-          />
+          <div>
+            <h2 className="font-headline text-2xl font-bold text-white">Mobilappar</h2>
+            <p className="text-sm text-white/40">Android-appar och PWA:er utvecklade för mobila enheter</p>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {currentPath !== '.' && (
-            <button 
-              onClick={() => fetchFiles(currentPath.split('/').slice(0, -1).join('/') || '.')}
-              className="p-4 rounded-2xl bg-surface-container-lowest border border-white/5 hover:bg-surface-container-high transition-all flex flex-col items-center gap-2 group"
-            >
-              <Folder className="text-white/20 group-hover:text-primary-container transition-colors" size={32} />
-              <span className="text-xs font-bold text-white/40">..</span>
-            </button>
-          )}
-          {files.map((file) => (
-            <button 
-              key={file.path}
-              onClick={() => handleFileClick(file)}
-              className="p-4 rounded-2xl bg-surface-container-lowest border border-white/5 hover:bg-surface-container-high transition-all flex flex-col items-center gap-2 group"
-            >
-              {file.isDirectory ? (
-                <Folder className="text-primary-container/60 group-hover:text-primary-container transition-colors" size={32} />
-              ) : (
-                <File className="text-white/20 group-hover:text-white transition-colors" size={32} />
-              )}
-              <span className="text-xs font-bold text-white truncate w-full text-center">{file.name}</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 text-xs text-white/40 leading-relaxed">
+          <div className="rounded-xl bg-surface-container p-4 border border-white/5">
+            <p className="font-bold text-white/70 mb-1">📦 APK-filer</p>
+            Aktivera "Okända källor" i Android-inställningarna innan installation:
+            Inställningar → Säkerhet → Okända källor.
+          </div>
+          <div className="rounded-xl bg-surface-container p-4 border border-white/5">
+            <p className="font-bold text-white/70 mb-1">🌐 PWA-appar</p>
+            Android (Chrome): öppna appen → ⋮ → "Installera app".
+            iPhone (Safari): dela-ikonen → "Lägg till på hemskärmen".
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function TerminalTab() {
-  const [command, setCommand] = useState('');
-  const [output, setOutput] = useState<string[]>(['AlexCloud Terminal v1.0.0', 'Skriv ett kommando för att börja...']);
-  const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [output]);
-
-  const handleExec = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!command.trim()) return;
-
-    const currentCmd = command;
-    setCommand('');
-    setOutput(prev => [...prev, `> ${currentCmd}`]);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/terminal/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: currentCmd })
-      });
-      const data = await res.json();
-      setOutput(prev => [...prev, data.output]);
-    } catch (err) {
-      setOutput(prev => [...prev, 'Fel vid körning av kommando.']);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="rounded-3xl bg-surface-container p-8 border border-white/5 h-[600px] flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="font-headline text-xl font-bold text-white flex items-center gap-3">
-          <Terminal className="text-primary-container" size={24} />
-          Inbyggd Terminal
-        </h3>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">alex@core-command:~$</span>
       </div>
 
-      <div 
-        ref={scrollRef}
-        className="flex-1 bg-black/40 rounded-2xl p-6 font-mono text-xs text-secondary-container overflow-y-auto space-y-2 border border-white/5"
-      >
-        {output.map((line, i) => (
-          <div key={i} className="whitespace-pre-wrap">{line}</div>
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {MOBILE_APPS.map((app) => (
+          <MobileAppCard key={app.id} app={app} />
         ))}
-        {loading && <div className="animate-pulse">Kör...</div>}
       </div>
-
-      <form onSubmit={handleExec} className="mt-6 relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-container font-mono text-sm">$</span>
-        <input 
-          type="text" 
-          className="w-full rounded-xl bg-surface-container-lowest py-4 pl-10 pr-4 font-mono text-sm text-white border border-white/5 focus:ring-1 focus:ring-primary/40"
-          placeholder="Skriv kommando..."
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          disabled={loading}
-        />
-      </form>
     </div>
-  );
-}
-
-function AITab() {
-  const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([
-    { role: 'model', text: 'Hej Alex! Jag är din Core Command AI. Hur kan jag hjälpa dig med din server idag?' }
-  ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
-
-    const userText = input;
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userText }]);
-    setLoading(true);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userText,
-        config: {
-          systemInstruction: "Du är en expert på Ubuntu-servrar, Docker och systemadministration. Du hjälper användaren Alex att hantera sin hemserver 'Alex Core Command'. Var teknisk men pedagogisk. Svara på svenska."
-        }
-      });
-
-      setMessages(prev => [...prev, { role: 'model', text: response.text || 'Jag kunde inte generera ett svar.' }]);
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, { role: 'model', text: 'Ett fel uppstod vid kommunikation med AI:n. Kontrollera din API-nyckel.' }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="rounded-3xl bg-surface-container p-8 border border-white/5 h-[600px] flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="font-headline text-xl font-bold text-white flex items-center gap-3">
-          <Bot className="text-primary-container" size={24} />
-          AI Server Assistent
-        </h3>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Powered by Gemini</span>
-      </div>
-
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-4 p-4"
-      >
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-2xl p-4 text-sm ${
-              msg.role === 'user' 
-                ? 'bg-primary-container text-on-primary-container' 
-                : 'bg-surface-container-lowest text-white/80 border border-white/5'
-            }`}>
-              {msg.text}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-surface-container-lowest rounded-2xl p-4 border border-white/5">
-              <div className="flex gap-1">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary-container animate-bounce" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary-container animate-bounce [animation-delay:0.2s]" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary-container animate-bounce [animation-delay:0.4s]" />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <form onSubmit={handleSend} className="mt-6 flex gap-3">
-        <input 
-          type="text" 
-          className="flex-1 rounded-xl bg-surface-container-lowest py-4 px-6 text-sm text-white border border-white/5 focus:ring-1 focus:ring-primary/40"
-          placeholder="Fråga om din server..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
-        />
-        <button 
-          type="submit"
-          disabled={loading}
-          className="p-4 rounded-xl bg-primary-container text-on-primary-container hover:scale-105 transition-all disabled:opacity-50"
-        >
-          <Send size={20} />
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function PasswordModal({ onClose, onSubmit }: { onClose: () => void, onSubmit: (password: string) => void }) {
-  const [password, setPassword] = useState('');
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-surface/90 backdrop-blur-sm p-4"
-    >
-      <motion.div 
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-md rounded-3xl bg-surface-container p-8 border border-white/10 shadow-2xl"
-      >
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-container/10 text-primary-container">
-            <Lock size={32} />
-          </div>
-          <h2 className="font-headline text-2xl font-bold text-white mb-2">Skyddat område</h2>
-          <p className="text-white/40 text-sm">Vänligen ange administratörslösenord för att komma åt systeminställningar.</p>
-        </div>
-
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit(password); }}>
-          <input 
-            autoFocus
-            type="password" 
-            placeholder="Lösenord"
-            className="w-full rounded-2xl border-white/10 bg-surface-container-lowest p-4 text-white focus:ring-2 focus:ring-primary-container mb-6"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <div className="flex gap-4">
-            <button 
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-2xl border border-white/10 py-4 text-sm font-bold text-white/60 hover:bg-white/5"
-            >
-              Avbryt
-            </button>
-            <button 
-              type="submit"
-              className="flex-1 rounded-2xl bg-primary-container py-4 text-sm font-bold text-on-primary hover:opacity-90"
-            >
-              Lås upp
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
   );
 }
