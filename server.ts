@@ -31,6 +31,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
   {
+    id: "familjeresor",
+    title: "Familjeresor",
+    description: "Redaktionellt reseminnesarkiv för familjens sommarresor – hjältebanner för senaste resan, kort för alla resmål och en berättande sida per plats med galleri på upp till 50 bilder, lightbox, karta och egen stämningsanimation per resmål.",
+    icon: "🏖️",
+    category: "Resor",
+    tags: ["Express", "Sharp", "Leaflet", "Docker"],
+    imageSeed: "familjeresor",
+    status: "active",
+    createdAt: "2026-07-25T20:00:00Z",
+    type: "Web App",
+    url: "https://familjeresor.alexcloud.se",
+    banner: "linear-gradient(135deg, #211c15, #2f6b5c)",
+    bannerEmoji: "🏖️",
+  },
+  {
     id: "coach",
     title: "Alex – AI-coach",
     description: "Personlig AI-hälsocoach som planerar veckan runt golf och padel, anpassar träningen efter dagsform (höft/astma), loggar vikt och peppar varje dag. Snabb morgon-incheckning och en coach som aldrig ger dåligt samvete.",
