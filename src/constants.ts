@@ -437,6 +437,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'alexsresor',
+    bannerImage: 'https://databasen.alexcloud.se/assets/fd03e4a1-6242-4518-9864-88e857d74a18?width=800&quality=80',
+    title: 'Alex resor',
+    description: 'Alexanders egna resor som ett arkiv av boardingpass – split-flap-avgångstavla, kinetisk typografi, biljettkort med perforering och streckkod, animerade flygrutter på kartan och en berättande sida per resa med galleri, dagsindelning och lightbox.',
+    icon: '🎫',
+    banner: "linear-gradient(135deg, #141210, #d8402c)",
+    bannerEmoji: '✈️',
+    category: 'Resor',
+    tags: ['Express', 'Sharp', 'Leaflet', 'Docker'],
+    imageSeed: 'alexsresor',
+    status: 'active',
+    createdAt: '2026-07-27T00:00:00Z',
+    type: 'Web App',
+    url: 'https://alexsresor.alexcloud.se',
+  },
+  {
     id: 'resedagboken',
     bannerImage: 'https://databasen.alexcloud.se/assets/b496e1df-9f4c-4e25-8de2-6524f64d99d5?width=800&quality=80',
     title: 'Resedagboken',
