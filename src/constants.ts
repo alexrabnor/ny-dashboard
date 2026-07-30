@@ -437,6 +437,22 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'kokboken',
+    bannerImage: 'https://kokboken.alexcloud.se/images/og.jpg',
+    title: 'Kokboken',
+    description: 'Mitt eget receptarkiv i varm husmanspalett – varje rätt betygsatt 1–10 med stämpel på kokbokshyllan, valbara tillbehör, tider och temperaturer. Kalorierna räknas ur ingredienslistan mot en svensk livsmedelstabell och appen skriver ärligt ut hur många ingredienser som gick att räkna. Tre startsidelägen att växla mellan, femstegsguide för nya rätter och PIN-lås på allt som ändrar något.',
+    icon: '🍲',
+    banner: "linear-gradient(135deg, #2E1C15, #E8380D)",
+    bannerEmoji: '👨‍🍳',
+    category: 'Mat',
+    tags: ['React', 'Vite', 'Express', 'Docker'],
+    imageSeed: 'kokboken',
+    status: 'active',
+    createdAt: '2026-07-30T00:00:00Z',
+    type: 'Web App',
+    url: 'https://kokboken.alexcloud.se',
+  },
+  {
     id: 'alexsresor',
     bannerImage: 'https://databasen.alexcloud.se/assets/fd03e4a1-6242-4518-9864-88e857d74a18?width=800&quality=80',
     title: 'Alex resor',
