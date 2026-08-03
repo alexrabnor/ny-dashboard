@@ -31,6 +31,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
   {
+    id: "halsa",
+    title: "Hälsa – magdagbok",
+    description: "Privat dagbok för magbesvär vid kolostomi. Registrerar skov med daglig smärtskattning, konsistens, gasbildning, tömningar och stopp-flagga – plus vad som åts och dracks dygnet innan. Jämför mot en personlig baslinje och skriver ut en A4-sammanställning till läkaren.",
+    icon: "🫀",
+    category: "Hälsa",
+    tags: ["Express", "SQLite", "PWA", "Docker"],
+    imageSeed: "halsa",
+    status: "active",
+    createdAt: "2026-08-03T00:00:00Z",
+    type: "Web App",
+    url: "https://halsa.alexcloud.se",
+    banner: "linear-gradient(135deg, #33291f, #c2643f)",
+    bannerEmoji: "🌿",
+  },
+  {
     id: "familjeresor",
     title: "Familjeresor",
     description: "Redaktionellt reseminnesarkiv för familjens sommarresor – hjältebanner för senaste resan, kort för alla resmål och en berättande sida per plats med galleri på upp till 50 bilder, lightbox, karta och egen stämningsanimation per resmål.",
