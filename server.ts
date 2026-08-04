@@ -31,6 +31,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
   {
+    id: "drickamindre",
+    title: "Drickamindre",
+    description: "Coach för ölvanor med pengarna som drivkraft. Ett tryck loggar en öl ur typkatalogen (lager till QIPA), appen räknar om till standardglas och visar veckoringen mot målet. Hjältesiffran är kronorna du sparat mot sommarens takt – grön yta mellan baslinjen och verkligheten.",
+    icon: "🍺",
+    category: "Hälsa",
+    tags: ["React", "Vite", "Express", "Directus", "Docker"],
+    imageSeed: "drickamindre",
+    status: "active",
+    createdAt: "2026-08-05T00:00:00Z",
+    type: "Web App",
+    url: "https://drickamindre.alexcloud.se",
+    banner: "linear-gradient(135deg, #1b1815, #b8892c)",
+    bannerEmoji: "🍺",
+  },
+  {
     id: "halsa",
     title: "Hälsa – magdagbok",
     description: "Privat dagbok för magbesvär vid kolostomi. Registrerar skov med daglig smärtskattning, konsistens, gasbildning, tömningar och stopp-flagga – plus vad som åts och dracks dygnet innan. Jämför mot en personlig baslinje och skriver ut en A4-sammanställning till läkaren.",
