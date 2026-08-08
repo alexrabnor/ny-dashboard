@@ -437,6 +437,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'wow',
+    title: 'Way Out West 2026',
+    description: 'Min egen festivalguide till Slottsskogen 13–15 augusti. Hela schemat för alla fem scener med favoritmarkering, krockvarningar när två utvalda går samtidigt och en dagsplan med luckor och scenbyten. Varje artist har presentation på svenska, trolig låtlista, 30-sekunders smakprov med tidssynkad låttext och bakgrund till låtarna. Installeras på hemskärmen och fungerar helt utan täckning.',
+    icon: '🎪',
+    banner: 'linear-gradient(135deg, #000000, #3a3a3a)',
+    bannerEmoji: '🎤',
+    category: 'Musik',
+    tags: ['Express', 'SQLite', 'PWA', 'Docker'],
+    imageSeed: 'wayoutwest',
+    status: 'active',
+    createdAt: '2026-08-08T00:00:00Z',
+    type: 'Web App',
+    url: 'https://wow.alexcloud.se',
+  },
+  {
     id: 'kokboken',
     bannerImage: 'https://kokboken.alexcloud.se/images/og.jpg',
     title: 'Kokboken',
