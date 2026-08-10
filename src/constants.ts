@@ -437,6 +437,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'brewski',
+    title: 'Brewski',
+    description: 'Bryggeriguide till ölfestivalen Brewskival i Helsingborg 28–29 augusti. Alla 97 bryggerier från 21 länder, grupperade per land med faktaruta om varje: ort, grundat, stilar och vad de är kända för. Markera Måste, Gärna eller Kanske så räknas en gemensam topplista fram där Ingvars och mina poäng summeras. På plats sätts betyg 1–10 på ölen i snabbläge, med hela provningsprotokollet en knapptryckning bort, och den andres betyg är dolt tills du satt ditt.',
+    icon: '🍺',
+    banner: 'linear-gradient(135deg, #a4441c, #f0e2d8)',
+    bannerEmoji: '🍻',
+    category: 'Mat & Dryck',
+    tags: ['Express', 'Directus', 'Docker'],
+    imageSeed: 'brewski',
+    status: 'active',
+    createdAt: '2026-08-10T00:00:00Z',
+    type: 'Web App',
+    url: 'https://brewski.alexcloud.se',
+  },
+  {
     id: 'wow',
     title: 'Way Out West 2026',
     description: 'Min egen festivalguide till Slottsskogen 13–15 augusti. Hela schemat för alla fem scener med favoritmarkering, krockvarningar när två utvalda går samtidigt och en dagsplan med luckor och scenbyten. Varje artist har presentation på svenska, trolig låtlista, 30-sekunders smakprov med tidssynkad låttext och bakgrund till låtarna. Installeras på hemskärmen och fungerar helt utan täckning.',
