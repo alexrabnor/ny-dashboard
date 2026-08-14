@@ -5,6 +5,13 @@ services:
     env_file: .env
     ports:
       - "${PORT}:${PORT}"
+    # Systeminfo-sidan läser värdens tillstånd. Allt är skrivskyddat och
+    # sidan ligger bakom DASHBOARD_PASS.
+    pid: host # processlistan för hela maskinen, inte bara containern
+    volumes:
+      - /:/host:ro # diskanalys + Dockers metadata (namn, loggar, volymer)
+      - /sys/fs/cgroup:/hostcgroup:ro # minne/CPU per container
+      - ./data:/app/data # sparad diskskanning mellan omstarter
     networks:
       - caddy_net
 

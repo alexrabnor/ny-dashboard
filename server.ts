@@ -8,6 +8,7 @@ import axios from "axios";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { APPS, GAMES, SHARED_APPS } from "./src/constants";
+import { registerSystemInfoRoutes } from "./systemInfo";
 
 dotenv.config();
 
@@ -30,6 +31,22 @@ function safeEqual(a: string, b: string) {
 // Personliga appar – listan finns ENDAST här på servern och skickas aldrig
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
+  {
+    id: "anor",
+    title: "Anor",
+    description:
+      "Släktforskning från grunden. Personkortet är arbetsytan, antavlan är belöningen. Familjer är egna poster så omgiften och halvsyskon får plats, datum får vara luddiga (\"omkring 1850\"), och namn kan finnas i flera former för patronymikon och soldatnamn. Guiden läser din data och föreslår nästa steg – närmast dig först. GEDCOM-export så inget sitter fast.",
+    icon: "🌳",
+    category: "Övriga appar",
+    tags: ["Express", "SQLite", "sharp", "GEDCOM", "Docker"],
+    imageSeed: "anor",
+    status: "active",
+    createdAt: "2026-08-06T00:00:00Z",
+    type: "Web App",
+    url: "https://anor.alexcloud.se",
+    banner: "linear-gradient(135deg, #2b2118, #8c2f22)",
+    bannerEmoji: "🌳",
+  },
   {
     id: "drickamindre",
     title: "Drickamindre",
@@ -364,6 +381,11 @@ app.post("/api/system-apps", (req, res) => {
   }
   res.json(SYSTEM_APPS);
 });
+
+// Detaljerad systeminfo (RAM, disk, containrar, vad som tar plats) – ligger
+// bakom samma lösenord eftersom sökvägar och processnamn inte hör hemma på en
+// öppen sida.
+registerSystemInfoRoutes(app, checkPassword);
 
 // --- Upp/ner-status för apparna -----------------------------------------
 // Pingar varje publik apps URL och rapporterar om den svarar. Svar med

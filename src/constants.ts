@@ -437,6 +437,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'hypercraft',
+    title: 'Hypercraft',
+    description: 'En interaktiv showcase som demonstrerar det allra nyaste och mest avancerade inom modern frontend: WebGL Shaders med realtids-raymarching, procedural Web Audio syntesstudio, 2D Verlet rigid-body fysikarena, OKLCH, och mikrodynamik.',
+    icon: '🔮',
+    banner: 'linear-gradient(135deg, #030712, #38bdf8)',
+    bannerEmoji: '⚡',
+    category: 'Teknik',
+    tags: ['WebGL', 'Web Audio', 'Verlet Physics', 'OKLCH', 'Docker'],
+    imageSeed: 'hypercraft',
+    status: 'active',
+    createdAt: '2026-08-14T00:00:00Z',
+    type: 'Web App',
+    url: 'https://hypercraft.alexcloud.se',
+  },
+  {
     id: 'brewski',
     title: 'Brewski',
     description: 'Bryggeriguide till ölfestivalen Brewskival i Helsingborg 28–29 augusti. Alla 97 bryggerier från 21 länder, grupperade per land med faktaruta om varje: ort, grundat, stilar och vad de är kända för. Markera Måste, Gärna eller Kanske så räknas en gemensam topplista fram där Ingvars och mina poäng summeras. På plats sätts betyg 1–10 på ölen i snabbläge, med hela provningsprotokollet en knapptryckning bort, och den andres betyg är dolt tills du satt ditt.',

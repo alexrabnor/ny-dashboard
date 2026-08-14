@@ -7,10 +7,13 @@ RUN npm run build
 
 FROM node:20-alpine
 WORKDIR /app
+# Systeminfo-sidan mäter disken med du/find – busybox-varianterna saknar
+# --block-size och -printf, därför riktiga coreutils/findutils.
+RUN apk add --no-cache coreutils findutils
 COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
-COPY server.ts tsconfig.json ./
+COPY server.ts systemInfo.ts tsconfig.json ./
 # server.ts importerar applistorna för hälsokontrollen /api/app-status
 COPY src/constants.ts src/types.ts ./src/
 COPY downloads ./downloads

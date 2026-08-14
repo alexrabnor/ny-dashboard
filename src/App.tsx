@@ -26,12 +26,18 @@ import {
   HardDrive,
   Server,
   Bot,
-  Users
+  Users,
+  Gauge,
+  MemoryStick,
+  RefreshCw,
+  Folder,
+  FileText,
+  Box
 } from 'lucide-react';
 import { DASHBOARD_ITEMS, APPS, GAMES, SHARED_APPS, MOBILE_APPS } from './constants';
 import { AppDefinition, DashboardItem, MobileAppDefinition } from './types';
 
-type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'ai-features' | 'private' | 'shared' | 'system' | 'mobile';
+type Page = 'dashboard' | 'library' | 'games' | 'projects' | 'ai-features' | 'private' | 'shared' | 'system' | 'mobile' | 'systeminfo';
 
 // Delas av sidomenyn (desktop) och hamburgermenyn (mobil)
 const NAV_ITEMS: { page: Page; label: string; icon: React.ReactNode }[] = [
@@ -44,6 +50,7 @@ const NAV_ITEMS: { page: Page; label: string; icon: React.ReactNode }[] = [
   { page: 'private', label: 'Övriga appar', icon: <Lock size={18} /> },
   { page: 'shared', label: 'Andras appar', icon: <Users size={18} /> },
   { page: 'system', label: 'Systemappar', icon: <Server size={18} /> },
+  { page: 'systeminfo', label: 'Systeminfo', icon: <Gauge size={18} /> },
 ];
 type SortCriteria = 'name' | 'category' | 'type' | 'date';
 
@@ -51,7 +58,7 @@ export default function App() {
   // #mobile, #games osv. öppnar rätt sida direkt (används av redirects från gamla sajten)
   const [currentPage, setCurrentPage] = useState<Page>(() => {
     const hash = window.location.hash.replace('#', '');
-    const pages: Page[] = ['dashboard', 'library', 'games', 'projects', 'ai-features', 'private', 'shared', 'system', 'mobile'];
+    const pages: Page[] = ['dashboard', 'library', 'games', 'projects', 'ai-features', 'private', 'shared', 'system', 'mobile', 'systeminfo'];
     return (pages as string[]).includes(hash) ? (hash as Page) : 'dashboard';
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +164,8 @@ export default function App() {
         return <AIFeaturesPage onBack={() => setCurrentPage('dashboard')} />;
       case 'mobile':
         return <MobileAppsPage onBack={() => setCurrentPage('dashboard')} />;
+      case 'systeminfo':
+        return <SystemInfoPage onBack={() => setCurrentPage('dashboard')} />;
       default:
         return <DashboardHome onNavigate={setCurrentPage} />;
     }
@@ -304,6 +313,7 @@ export default function App() {
                currentPage === 'projects' ? 'Projekt' : 
                currentPage === 'ai-features' ? 'AI Funktioner' :
                currentPage === 'mobile' ? 'Mobilappar' :
+               currentPage === 'systeminfo' ? 'Systeminfo' :
                'Systeminställningar'}
             </h2>
           </div>
@@ -1669,6 +1679,856 @@ function MobileAppsPage({ onBack }: { onBack: () => void }) {
           <MobileAppCard key={app.id} app={app} />
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Systeminfo – detaljerad bild av maskinens minne, disk och containrar.
+// Ligger bakom samma lösenord som "Övriga appar": sökvägar, filnamn och
+// processnamn hör inte hemma på en öppen sida.
+// ---------------------------------------------------------------------------
+
+interface SysHost {
+  hostname: string; os: string; kernel: string; cpuModel: string; cores: number;
+  uptimeSec: number; bootTime: string; hostMounted: boolean; now: string;
+}
+interface SysMemory {
+  totalBytes: number; usedBytes: number; freeBytes: number; availableBytes: number;
+  buffersBytes: number; cachedBytes: number; sharedBytes: number; dirtyBytes: number;
+  swapTotalBytes: number; swapUsedBytes: number; swapFreeBytes: number; percent: number;
+}
+interface SysProcess { pid: number; name: string; command: string; user: string; rssBytes: number; percent: number }
+interface SysContainer {
+  id: string; name: string; image: string; running: boolean; startedAt: string;
+  restartCount: number; memBytes: number; cpuPercent: number | null; logBytes: number;
+  volumeBytes: number; volumes: string[];
+}
+interface SysFilesystem { mount: string; totalBytes: number; usedBytes: number; freeBytes: number; percent: number; device: string | null; fsType: string | null }
+interface SystemInfo {
+  host: SysHost;
+  cpu: { percent: number; perCore: number[]; loadAvg: number[]; tempC: number | null };
+  memory: SysMemory;
+  processes: { total: number; top: SysProcess[] };
+  containers: { total: number; running: number; memTotalBytes: number; logTotalBytes: number; list: SysContainer[]; available: boolean };
+  filesystems: SysFilesystem[];
+  scan: { scannedAt: string | null; durationMs: number | null; running: boolean; startedAt: string | null; error: string | null };
+}
+interface TreeNode { name: string; path: string; bytes: number; ownBytes?: number; children?: TreeNode[] }
+interface DiskScan {
+  scannedAt: string; durationMs: number; tree: TreeNode | null;
+  largestFiles: { path: string; bytes: number }[];
+  extensions: { ext: string; bytes: number; count: number }[];
+  buckets: { nodeModulesBytes: number; gitBytes: number; dockerLogBytes: number };
+  fileCount: number; fileBytes: number;
+  dockerLogs: { name: string; bytes: number }[];
+  volumes: { name: string; bytes: number }[];
+}
+
+function formatBytes(bytes?: number | null): string {
+  if (bytes == null || !isFinite(bytes)) return '–';
+  const units = ['B', 'kB', 'MB', 'GB', 'TB'];
+  let value = Math.abs(bytes);
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+  const decimals = i <= 1 || value >= 100 ? 0 : 1;
+  return `${value.toFixed(decimals).replace('.', ',')} ${units[i]}`;
+}
+
+function formatDuration(sec: number): string {
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d} d ${h} tim`;
+  if (h > 0) return `${h} tim ${m} min`;
+  return `${m} min`;
+}
+
+function formatSince(iso: string | null | undefined): string {
+  if (!iso) return '–';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!isFinite(ms) || ms < 0) return '–';
+  return formatDuration(Math.round(ms / 1000));
+}
+
+function formatClock(iso: string | null | undefined): string {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+// Färgen följer allvaret: blått är normalt, gult varnar, rött betyder trångt.
+function levelColor(percent: number): string {
+  if (percent >= 90) return 'bg-error';
+  if (percent >= 75) return 'bg-[#ffd166]';
+  return 'bg-primary-container';
+}
+function levelText(percent: number): string {
+  if (percent >= 90) return 'text-error';
+  if (percent >= 75) return 'text-[#ffd166]';
+  return 'text-primary-container';
+}
+
+function Meter({ percent, className = '' }: { percent: number; className?: string }) {
+  return (
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-white/5 ${className}`}>
+      <div className={`h-full rounded-full ${levelColor(percent)} transition-all duration-500`} style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+    </div>
+  );
+}
+
+function BigStat({ icon, label, value, sub, percent }: { icon: React.ReactNode; label: string; value: string; sub: string; percent?: number }) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-surface-container p-5">
+      <div className="mb-3 flex items-center gap-2 text-white/40">
+        {icon}
+        <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+      </div>
+      <p className="font-headline text-3xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs text-white/40">{sub}</p>
+      {percent != null && <Meter percent={percent} className="mt-4" />}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-white/5 py-2 last:border-0">
+      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-right text-xs font-bold text-white">{value}</span>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="rounded-3xl border border-white/5 bg-surface-container-low p-5 sm:p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-headline text-lg font-bold text-white">{title}</h3>
+          {subtitle && <p className="text-xs text-white/40">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+type SysTab = 'overview' | 'memory' | 'disk' | 'containers';
+
+function SystemInfoPage({ onBack }: { onBack: () => void }) {
+  const [password, setPassword] = useState('');
+  const [unlocked, setUnlocked] = useState<string | null>(null);
+  const [info, setInfo] = useState<SystemInfo | null>(null);
+  const [disk, setDisk] = useState<DiskScan | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<SysTab>('overview');
+
+  const post = async (url: string, pass: string) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass }),
+    });
+    if (!res.ok) throw new Error(res.status === 401 ? 'Fel lösenord. Försök igen.' : 'Servern svarade inte som väntat.');
+    return res.json();
+  };
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await post('/api/system-info', password);
+      setInfo(data);
+      setUnlocked(password);
+    } catch (err: any) {
+      setError(err.message || 'Något gick fel.');
+    } finally {
+      setLoading(false);
+      setPassword('');
+    }
+  };
+
+  // Liveuppdatering var femte sekund så länge sidan är öppen
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const data = await post('/api/system-info', unlocked);
+        if (!cancelled) setInfo(data);
+      } catch {
+        // behåll senaste kända värden
+      }
+    };
+    const interval = setInterval(tick, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [unlocked]);
+
+  // Diskskanningen hämtas separat – den är stor och ändras bara vid ny skanning
+  const scannedAt = info?.scan.scannedAt || null;
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await post('/api/system-info/disk', unlocked);
+        if (!cancelled) setDisk(data.scan);
+      } catch {
+        /* visas som "ingen skanning" */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [unlocked, scannedAt]);
+
+  const startScan = async () => {
+    if (!unlocked) return;
+    try {
+      await post('/api/system-info/scan', unlocked);
+      setInfo((prev) => (prev ? { ...prev, scan: { ...prev.scan, running: true } } : prev));
+    } catch {
+      /* knappen får försökas igen */
+    }
+  };
+
+  if (!unlocked || !info) {
+    return (
+      <div className="space-y-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white">
+          <ArrowLeft size={16} />
+          Tillbaka till Översikt
+        </button>
+
+        <div className="mx-auto max-w-md rounded-3xl border border-white/10 bg-surface-container p-8 shadow-2xl">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-container/10 text-primary-container">
+              <Gauge size={32} />
+            </div>
+            <h2 className="mb-2 font-headline text-2xl font-bold text-white">Systeminfo</h2>
+            <p className="text-sm text-white/40">
+              Minne, diskutrymme, vad som tar plats och alla containrar. Ange lösenord för att visa.
+            </p>
+          </div>
+
+          <form onSubmit={handleUnlock}>
+            <input
+              autoFocus
+              type="password"
+              placeholder="Lösenord"
+              className="mb-4 w-full rounded-2xl border border-white/10 bg-surface-container-lowest p-4 text-white focus:ring-2 focus:ring-primary-container"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
+            {error && <p className="mb-4 text-sm font-bold text-error">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading || !password}
+              className="w-full rounded-2xl bg-primary-container py-4 text-sm font-bold text-on-primary-container hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? 'Låser upp…' : 'Lås upp'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  const { host, cpu, memory, filesystems } = info;
+  const rootFs = filesystems[0];
+  const tabs: { id: SysTab; label: string }[] = [
+    { id: 'overview', label: 'Överblick' },
+    { id: 'memory', label: 'Minne' },
+    { id: 'disk', label: 'Disk' },
+    { id: 'containers', label: `Containrar (${info.containers.running})` },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-white/40 transition-colors hover:text-white">
+        <ArrowLeft size={16} />
+        Tillbaka till Översikt
+      </button>
+
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-headline text-3xl font-black tracking-tight text-white sm:text-4xl">Systeminfo</h1>
+          <p className="mt-1 text-sm text-white/40">
+            {host.hostname} · {host.os} · uppe {formatDuration(host.uptimeSec)}
+          </p>
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">
+          Uppdateras var 5:e sekund
+        </p>
+      </div>
+
+      {/* Nyckeltal – alltid synliga oavsett flik */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <BigStat
+          icon={<MemoryStick size={16} />}
+          label="Minne"
+          value={`${memory.percent}%`}
+          sub={`${formatBytes(memory.usedBytes)} använt · ${formatBytes(memory.availableBytes)} tillgängligt av ${formatBytes(memory.totalBytes)}`}
+          percent={memory.percent}
+        />
+        <BigStat
+          icon={<HardDrive size={16} />}
+          label="Disk"
+          value={rootFs ? `${rootFs.percent}%` : '–'}
+          sub={rootFs ? `${formatBytes(rootFs.freeBytes)} ledigt av ${formatBytes(rootFs.totalBytes)}` : 'Okänd'}
+          percent={rootFs?.percent ?? 0}
+        />
+        <BigStat
+          icon={<Cpu size={16} />}
+          label="Processor"
+          value={`${cpu.percent}%`}
+          sub={`${host.cores} kärnor · load ${cpu.loadAvg.map((l) => l.toFixed(2)).join(' ')}`}
+          percent={cpu.percent}
+        />
+        <BigStat
+          icon={<Thermometer size={16} />}
+          label="Temp & swap"
+          value={cpu.tempC != null ? `${cpu.tempC}°C` : '–'}
+          sub={memory.swapTotalBytes > 0
+            ? `Swap: ${formatBytes(memory.swapUsedBytes)} av ${formatBytes(memory.swapTotalBytes)} använd`
+            : 'Ingen swap konfigurerad'}
+          percent={memory.swapTotalBytes > 0 ? Math.round((memory.swapUsedBytes / memory.swapTotalBytes) * 100) : 0}
+        />
+      </div>
+
+      {/* Flikar */}
+      <div className="flex flex-wrap gap-2 border-b border-white/5 pb-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`rounded-t-xl px-4 py-2 font-headline text-sm font-bold transition-colors ${
+              tab === t.id ? 'bg-surface-container text-primary-container' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'overview' && <OverviewTab info={info} disk={disk} />}
+      {tab === 'memory' && <MemoryTab info={info} />}
+      {tab === 'disk' && <DiskTab info={info} disk={disk} onScan={startScan} />}
+      {tab === 'containers' && <ContainersTab info={info} />}
+    </div>
+  );
+}
+
+function OverviewTab({ info, disk }: { info: SystemInfo; disk: DiskScan | null }) {
+  const { host, cpu, memory, containers } = info;
+  const topProcesses = info.processes.top.slice(0, 6);
+  const topDirs = (disk?.tree?.children || []).slice(0, 6);
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <SectionCard title="Maskinen" subtitle="Fasta fakta om servern">
+        <InfoRow label="Värdnamn" value={host.hostname} />
+        <InfoRow label="Operativsystem" value={host.os} />
+        <InfoRow label="Kärna" value={host.kernel} />
+        <InfoRow label="Processor" value={host.cpuModel} />
+        <InfoRow label="Kärnor" value={`${host.cores} st`} />
+        <InfoRow label="Uppe sedan" value={`${formatClock(host.bootTime)} (${formatDuration(host.uptimeSec)})`} />
+        <InfoRow label="Belastning 1/5/15 min" value={cpu.loadAvg.map((l) => l.toFixed(2)).join(' · ')} />
+        <InfoRow label="Processer" value={`${info.processes.total} st`} />
+        <InfoRow label="Containrar" value={`${containers.running} igång av ${containers.total}`} />
+      </SectionCard>
+
+      <SectionCard title="Kärnor" subtitle="Belastning per kärna just nu">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {cpu.perCore.map((p, i) => (
+            <div key={i} className="rounded-xl border border-white/5 bg-surface-container-lowest p-3">
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">CPU {i}</span>
+                <span className={`text-xs font-bold ${levelText(p)}`}>{p}%</span>
+              </div>
+              <Meter percent={p} />
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Största minnesslukare" subtitle="Processer sorterade på faktiskt använt RAM">
+        <div className="space-y-3">
+          {topProcesses.map((p) => (
+            <div key={p.pid} className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-white">{p.name}</p>
+                <p className="truncate text-[10px] text-white/30">{p.command} · {p.user}</p>
+              </div>
+              <span className="shrink-0 text-xs font-bold text-white">{formatBytes(p.rssBytes)}</span>
+              <div className="w-16 shrink-0"><Meter percent={p.percent} /></div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Största mapparna"
+        subtitle={disk ? `Från skanningen ${formatClock(disk.scannedAt)}` : 'Ingen skanning gjord ännu'}
+      >
+        {topDirs.length === 0 ? (
+          <p className="text-xs text-white/30">Öppna fliken Disk och kör en skanning för att se vad som tar plats.</p>
+        ) : (
+          <div className="space-y-3">
+            {topDirs.map((d) => (
+              <div key={d.path} className="flex items-center gap-3">
+                <Folder size={14} className="shrink-0 text-primary-container/60" />
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-white/70">{d.path}</span>
+                <span className="shrink-0 text-xs font-bold text-white">{formatBytes(d.bytes)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+function MemoryTab({ info }: { info: SystemInfo }) {
+  const m = info.memory;
+  const total = m.totalBytes || 1;
+  const segments = [
+    { label: 'Använt av program', bytes: m.usedBytes, color: 'bg-primary-container' },
+    { label: 'Cache & buffertar', bytes: m.cachedBytes + m.buffersBytes, color: 'bg-primary-container/30' },
+    { label: 'Delat minne', bytes: m.sharedBytes, color: 'bg-secondary-container/50' },
+    { label: 'Fritt', bytes: m.freeBytes, color: 'bg-white/5' },
+  ];
+  const swapPercent = m.swapTotalBytes > 0 ? Math.round((m.swapUsedBytes / m.swapTotalBytes) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      <SectionCard title="Så används minnet" subtitle={`${formatBytes(m.totalBytes)} totalt`}>
+        <div className="mb-4 flex h-6 w-full overflow-hidden rounded-full bg-white/5">
+          {segments.map((s) => (
+            <div
+              key={s.label}
+              className={s.color}
+              style={{ width: `${(s.bytes / total) * 100}%` }}
+              title={`${s.label}: ${formatBytes(s.bytes)}`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {segments.map((s) => (
+            <div key={s.label} className="rounded-xl border border-white/5 bg-surface-container-lowest p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${s.color}`} />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{s.label}</span>
+              </div>
+              <p className="font-headline text-lg font-bold text-white">{formatBytes(s.bytes)}</p>
+              <p className="text-[10px] text-white/30">{Math.round((s.bytes / total) * 100)}% av totalen</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-4 rounded-xl border border-white/5 bg-surface-container-lowest p-3 text-xs leading-relaxed text-white/40">
+          Cache är filer kärnan sparat i minnet för snabbhet – den lämnas tillbaka så fort ett program behöver
+          plats. Den siffra som avgör om minnet räcker är <span className="font-bold text-white">tillgängligt</span>:{' '}
+          <span className={`font-bold ${levelText(100 - Math.round((m.availableBytes / total) * 100))}`}>{formatBytes(m.availableBytes)}</span>.
+        </p>
+      </SectionCard>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SectionCard title="Siffror i detalj">
+          <InfoRow label="Totalt installerat" value={formatBytes(m.totalBytes)} />
+          <InfoRow label="Använt av program" value={formatBytes(m.usedBytes)} />
+          <InfoRow label="Tillgängligt utan swap" value={formatBytes(m.availableBytes)} />
+          <InfoRow label="Helt fritt" value={formatBytes(m.freeBytes)} />
+          <InfoRow label="Cache" value={formatBytes(m.cachedBytes)} />
+          <InfoRow label="Buffertar" value={formatBytes(m.buffersBytes)} />
+          <InfoRow label="Delat minne (tmpfs)" value={formatBytes(m.sharedBytes)} />
+          <InfoRow label="Väntar på att skrivas till disk" value={formatBytes(m.dirtyBytes)} />
+          <InfoRow label="Docker-containrar totalt" value={formatBytes(info.containers.memTotalBytes)} />
+        </SectionCard>
+
+        <SectionCard title="Växlingsutrymme (swap)" subtitle="Disk som används när RAM tar slut">
+          <div className="mb-4">
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="font-headline text-2xl font-black text-white">{formatBytes(m.swapUsedBytes)}</span>
+              <span className="text-xs text-white/40">av {formatBytes(m.swapTotalBytes)}</span>
+            </div>
+            <Meter percent={swapPercent} />
+          </div>
+          <p className="text-xs leading-relaxed text-white/40">
+            {m.swapTotalBytes === 0
+              ? 'Ingen swap är konfigurerad. Vid minnesbrist avslutas processer direkt av kärnan.'
+              : swapPercent >= 90
+                ? 'Swappen är i princip full. Maskinen har haft mer igång än RAM räcker till – det märks som seghet. Överväg mer RAM eller färre containrar.'
+                : swapPercent >= 40
+                  ? 'En hel del ligger i swap. Det är inte akut, men maskinen har varit trång om minne någon gång sedan starten.'
+                  : 'Swappen används knappt – minnet räcker gott.'}
+          </p>
+        </SectionCard>
+      </div>
+
+      <SectionCard title={`Processer som använder mest minne`} subtitle={`${info.processes.total} processer körs totalt`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left">
+            <thead>
+              <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/30">
+                <th className="pb-2">Process</th>
+                <th className="pb-2">Användare</th>
+                <th className="pb-2">PID</th>
+                <th className="pb-2 text-right">Minne</th>
+                <th className="pb-2 pl-4 text-right">Andel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {info.processes.top.map((p) => (
+                <tr key={p.pid} className="border-b border-white/5 last:border-0">
+                  <td className="py-2 pr-4">
+                    <p className="text-xs font-bold text-white">{p.name}</p>
+                    <p className="truncate text-[10px] text-white/30">{p.command}</p>
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-white/40">{p.user}</td>
+                  <td className="py-2 pr-4 font-mono text-[10px] text-white/30">{p.pid}</td>
+                  <td className="py-2 text-right text-xs font-bold text-white">{formatBytes(p.rssBytes)}</td>
+                  <td className="py-2 pl-4 text-right text-xs text-white/40">{p.percent}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function DiskTab({ info, disk, onScan }: { info: SystemInfo; disk: DiskScan | null; onScan: () => void }) {
+  const [treePath, setTreePath] = useState('/');
+  const [showAllFiles, setShowAllFiles] = useState(false);
+  const scanning = info.scan.running;
+
+  const findNode = (node: TreeNode | null | undefined, target: string): TreeNode | null => {
+    if (!node) return null;
+    if (node.path === target) return node;
+    if (!target.startsWith(node.path)) return null;
+    for (const child of node.children || []) {
+      const hit = findNode(child, target);
+      if (hit) return hit;
+    }
+    return null;
+  };
+
+  const current = findNode(disk?.tree, treePath) || disk?.tree || null;
+  const crumbs = treePath === '/' ? ['/'] : ['/', ...treePath.split('/').filter(Boolean).map((_, i, arr) => '/' + arr.slice(0, i + 1).join('/'))];
+
+  return (
+    <div className="space-y-6">
+      <SectionCard
+        title="Filsystem"
+        subtitle="Fysiskt utrymme på maskinens diskar"
+      >
+        <div className="space-y-4">
+          {info.filesystems.map((fs) => (
+            <div key={fs.mount} className="rounded-xl border border-white/5 bg-surface-container-lowest p-4">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <span className="font-mono text-sm font-bold text-white">{fs.mount}</span>
+                  <span className="ml-2 text-[10px] uppercase tracking-widest text-white/30">
+                    {fs.device || ''} {fs.fsType || ''}
+                  </span>
+                </div>
+                <span className="text-xs text-white/40">
+                  <span className={`font-bold ${levelText(fs.percent)}`}>{formatBytes(fs.usedBytes)}</span> använt ·{' '}
+                  <span className="font-bold text-white">{formatBytes(fs.freeBytes)}</span> ledigt av {formatBytes(fs.totalBytes)}
+                </span>
+              </div>
+              <Meter percent={fs.percent} />
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Vad tar plats"
+        subtitle={
+          scanning
+            ? 'Skanning pågår – tar ett par minuter, sidan uppdaterar sig själv'
+            : disk
+              ? `Senast skannad ${formatClock(disk.scannedAt)} (tog ${Math.round(disk.durationMs / 1000)} s) · ${disk.fileCount.toLocaleString('sv-SE')} filer, ${formatBytes(disk.fileBytes)}`
+              : 'Ingen skanning gjord ännu'
+        }
+        action={
+          <button
+            onClick={onScan}
+            disabled={scanning}
+            className="flex items-center gap-2 rounded-full bg-primary-container px-4 py-2 text-xs font-bold text-on-primary-container transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            <RefreshCw size={14} className={scanning ? 'animate-spin' : ''} />
+            {scanning ? 'Skannar…' : 'Skanna om'}
+          </button>
+        }
+      >
+        {!disk || !current ? (
+          <p className="text-xs text-white/30">
+            {scanning
+              ? 'Första skanningen läser igenom hela disken. Kom tillbaka om några minuter.'
+              : 'Tryck på "Skanna om" för att mäta hur utrymmet är fördelat.'}
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 flex flex-wrap items-center gap-1 text-xs">
+              {crumbs.map((c, i) => (
+                <React.Fragment key={c}>
+                  {i > 0 && <ChevronRight size={12} className="text-white/20" />}
+                  <button
+                    onClick={() => setTreePath(c)}
+                    className={`rounded-lg px-2 py-1 font-mono transition-colors ${
+                      c === treePath ? 'bg-surface-container-high text-primary-container' : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    {c === '/' ? '/' : c.split('/').pop()}
+                  </button>
+                </React.Fragment>
+              ))}
+              <span className="ml-2 font-bold text-white">{formatBytes(current.bytes)}</span>
+            </div>
+
+            <div className="space-y-2">
+              {(current.children || []).map((child) => {
+                const share = current.bytes > 0 ? (child.bytes / current.bytes) * 100 : 0;
+                const canOpen = !!child.children?.length;
+                return (
+                  <button
+                    key={child.path}
+                    onClick={() => canOpen && setTreePath(child.path)}
+                    disabled={!canOpen}
+                    className={`flex w-full items-center gap-3 rounded-xl border border-white/5 bg-surface-container-lowest p-3 text-left transition-colors ${
+                      canOpen ? 'hover:bg-surface-container' : 'cursor-default'
+                    }`}
+                  >
+                    <Folder size={14} className={`shrink-0 ${canOpen ? 'text-primary-container' : 'text-white/20'}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-mono text-xs text-white">{child.name}</span>
+                      <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                        <span className="block h-full rounded-full bg-primary-container/70" style={{ width: `${share}%` }} />
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-xs font-bold text-white">{formatBytes(child.bytes)}</span>
+                      <span className="block text-[10px] text-white/30">{share.toFixed(share < 10 ? 1 : 0)}%</span>
+                    </span>
+                    {canOpen && <ChevronRight size={14} className="shrink-0 text-white/20" />}
+                  </button>
+                );
+              })}
+              {current.ownBytes != null && current.ownBytes > 0 && (
+                <div className="flex items-center gap-3 rounded-xl border border-dashed border-white/10 p-3">
+                  <FileText size={14} className="shrink-0 text-white/20" />
+                  <span className="min-w-0 flex-1 text-xs text-white/40">Filer direkt i den här mappen</span>
+                  <span className="text-xs font-bold text-white">{formatBytes(current.ownBytes)}</span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </SectionCard>
+
+      {disk && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SectionCard title="Största enskilda filer" subtitle="Filer över 200 MB">
+            <div className="space-y-2">
+              {(showAllFiles ? disk.largestFiles : disk.largestFiles.slice(0, 12)).map((f) => (
+                <div key={f.path} className="flex items-center gap-3">
+                  <FileText size={14} className="shrink-0 text-white/20" />
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/60" title={f.path}>{f.path}</span>
+                  <span className="shrink-0 text-xs font-bold text-white">{formatBytes(f.bytes)}</span>
+                </div>
+              ))}
+              {disk.largestFiles.length === 0 && <p className="text-xs text-white/30">Inga filer över 200 MB.</p>}
+            </div>
+            {disk.largestFiles.length > 12 && (
+              <button onClick={() => setShowAllFiles(!showAllFiles)} className="mt-4 text-xs font-bold text-primary-container hover:underline">
+                {showAllFiles ? 'Visa färre' : `Visa alla ${disk.largestFiles.length}`}
+              </button>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Filtyper" subtitle="Vilken sorts filer utrymmet går till">
+            <div className="space-y-2">
+              {disk.extensions.slice(0, 14).map((e) => {
+                const share = disk.fileBytes > 0 ? (e.bytes / disk.fileBytes) * 100 : 0;
+                return (
+                  <div key={e.ext} className="flex items-center gap-3">
+                    <span className="w-20 shrink-0 truncate font-mono text-[11px] text-white/60">.{e.ext}</span>
+                    <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/5">
+                      <span className="block h-full rounded-full bg-primary-container/70" style={{ width: `${share}%` }} />
+                    </span>
+                    <span className="w-20 shrink-0 text-right text-xs font-bold text-white">{formatBytes(e.bytes)}</span>
+                    <span className="w-16 shrink-0 text-right text-[10px] text-white/30">{e.count.toLocaleString('sv-SE')} st</span>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Vanliga utrymmesbovar" subtitle="Sådant som växer av sig självt">
+            <InfoRow label="node_modules (alla appar)" value={formatBytes(disk.buckets.nodeModulesBytes)} />
+            <InfoRow label="Git-historik (.git)" value={formatBytes(disk.buckets.gitBytes)} />
+            <InfoRow label="Docker-loggar" value={formatBytes(disk.buckets.dockerLogBytes)} />
+            <InfoRow label="Antal filer totalt" value={`${disk.fileCount.toLocaleString('sv-SE')} st`} />
+            <p className="mt-4 text-xs leading-relaxed text-white/40">
+              Containerloggar rensas med <span className="font-mono text-white/60">docker compose down &amp;&amp; up -d</span> för
+              appen, eller sätt <span className="font-mono text-white/60">logging.options.max-size</span> i dess compose-fil.
+            </p>
+          </SectionCard>
+
+          <SectionCard title="Största docker-loggar & volymer" subtitle="Per container respektive namngiven volym">
+            <div className="mb-4 space-y-2">
+              {disk.dockerLogs.slice(0, 6).map((l) => (
+                <div key={l.name} className="flex items-center gap-3">
+                  <Box size={14} className="shrink-0 text-white/20" />
+                  <span className="min-w-0 flex-1 truncate text-xs text-white/60">{l.name}</span>
+                  <span className={`shrink-0 text-xs font-bold ${l.bytes > 500 * 1024 * 1024 ? 'text-error' : 'text-white'}`}>{formatBytes(l.bytes)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/30">Volymer</p>
+            <div className="space-y-2">
+              {disk.volumes.slice(0, 6).map((v) => (
+                <div key={v.name} className="flex items-center gap-3">
+                  <Database size={14} className="shrink-0 text-white/20" />
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/60">{v.name}</span>
+                  <span className="shrink-0 text-xs font-bold text-white">{formatBytes(v.bytes)}</span>
+                </div>
+              ))}
+              {disk.volumes.length === 0 && <p className="text-xs text-white/30">Inga namngivna volymer hittades.</p>}
+            </div>
+          </SectionCard>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ContainerSort = 'mem' | 'log' | 'volume' | 'name';
+
+function ContainersTab({ info }: { info: SystemInfo }) {
+  const [sortBy, setSortBy] = useState<ContainerSort>('mem');
+  const [showAll, setShowAll] = useState(false);
+  const [onlyRunning, setOnlyRunning] = useState(true);
+
+  const c = info.containers;
+  if (!c.available) {
+    return (
+      <SectionCard title="Containrar">
+        <p className="text-xs text-white/40">
+          Dockers metadata är inte läsbar. Kontrollera att <span className="font-mono">/:/host:ro</span> är monterad i
+          dashboardens docker-compose.yml.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  const filtered = c.list.filter((x) => (onlyRunning ? x.running : true));
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'name') return a.name.localeCompare(b.name, 'sv');
+    if (sortBy === 'log') return b.logBytes - a.logBytes;
+    if (sortBy === 'volume') return b.volumeBytes - a.volumeBytes;
+    return b.memBytes - a.memBytes;
+  });
+  const visible = showAll ? sorted : sorted.slice(0, 20);
+  const maxMem = Math.max(1, ...sorted.map((x) => x.memBytes));
+
+  const sortOptions: { id: ContainerSort; label: string }[] = [
+    { id: 'mem', label: 'Minne' },
+    { id: 'log', label: 'Loggstorlek' },
+    { id: 'volume', label: 'Volymer' },
+    { id: 'name', label: 'Namn' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <BigStat icon={<Box size={16} />} label="Containrar" value={`${c.running}`} sub={`igång av ${c.total} totalt`} />
+        <BigStat icon={<MemoryStick size={16} />} label="RAM i containrar" value={formatBytes(c.memTotalBytes)} sub={`${Math.round((c.memTotalBytes / (info.memory.totalBytes || 1)) * 100)}% av maskinens minne`} />
+        <BigStat icon={<FileText size={16} />} label="Loggar" value={formatBytes(c.logTotalBytes)} sub="samlad storlek på containerloggar" />
+        <BigStat icon={<Database size={16} />} label="Volymer" value={formatBytes(c.list.reduce((s, x) => s + x.volumeBytes, 0))} sub="uppmätt vid senaste skanningen" />
+      </div>
+
+      <SectionCard
+        title="Alla containrar"
+        subtitle="Minne läses ur cgroup, loggstorlek direkt från disken"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setOnlyRunning(!onlyRunning)}
+              className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                onlyRunning ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container text-white/40'
+              }`}
+            >
+              Bara igång
+            </button>
+            {sortOptions.map((o) => (
+              <button
+                key={o.id}
+                onClick={() => setSortBy(o.id)}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  sortBy === o.id ? 'bg-surface-container-highest text-white' : 'bg-surface-container text-white/40 hover:text-white'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left">
+            <thead>
+              <tr className="border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/30">
+                <th className="pb-2">Container</th>
+                <th className="pb-2 text-right">Minne</th>
+                <th className="pb-2 pl-4 text-right">CPU</th>
+                <th className="pb-2 pl-4 text-right">Logg</th>
+                <th className="pb-2 pl-4 text-right">Volymer</th>
+                <th className="pb-2 pl-4 text-right">Uppe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((x) => (
+                <tr key={x.id} className="border-b border-white/5 last:border-0">
+                  <td className="py-2 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${x.running ? 'bg-secondary-container' : 'bg-white/20'}`} />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-white">{x.name}</p>
+                        <p className="truncate text-[10px] text-white/30">{x.image || '–'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-2 text-right">
+                    <span className="text-xs font-bold text-white">{x.running ? formatBytes(x.memBytes) : '–'}</span>
+                    {x.running && (
+                      <span className="mt-1 block h-1 w-20 overflow-hidden rounded-full bg-white/5 ml-auto">
+                        <span className="block h-full rounded-full bg-primary-container/70" style={{ width: `${(x.memBytes / maxMem) * 100}%` }} />
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2 pl-4 text-right text-xs text-white/60">{x.cpuPercent != null ? `${x.cpuPercent}%` : '–'}</td>
+                  <td className={`py-2 pl-4 text-right text-xs ${x.logBytes > 500 * 1024 * 1024 ? 'font-bold text-error' : 'text-white/60'}`}>{formatBytes(x.logBytes)}</td>
+                  <td className="py-2 pl-4 text-right text-xs text-white/60">{x.volumeBytes > 0 ? formatBytes(x.volumeBytes) : '–'}</td>
+                  <td className="py-2 pl-4 text-right text-[10px] text-white/30">{x.running ? formatSince(x.startedAt) : 'stoppad'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {sorted.length > 20 && (
+          <button onClick={() => setShowAll(!showAll)} className="mt-4 text-xs font-bold text-primary-container hover:underline">
+            {showAll ? 'Visa färre' : `Visa alla ${sorted.length}`}
+          </button>
+        )}
+      </SectionCard>
     </div>
   );
 }
