@@ -437,6 +437,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'blipp',
+    title: 'Blipp',
+    description: 'En TAKK-saga i åtta kapitel för barn 3–9 år. Väsendet Blipp landar hemma hos barnet — det varken hör eller pratar och förstår bara tecken, så barnet blir dess lärare. För att komma vidare måste barnet ut i rummet, hitta något på riktigt, fota det och teckna ordet. Alla 40 tecken visas som filmklipp, aldrig som textbeskrivningar. Två svårighetsnivåer styr uppdragen utan att sagan skrivs om. Foton och framsteg stannar i telefonen och skickas aldrig till någon server.',
+    icon: '👋',
+    banner: 'linear-gradient(135deg, #12201d, #4e958e)',
+    bannerEmoji: '✨',
+    category: 'Barn & Lärande',
+    tags: ['TAKK', 'Next.js', 'PWA', 'Docker'],
+    imageSeed: 'blipp',
+    status: 'active',
+    createdAt: '2026-08-16T00:00:00Z',
+    type: 'Web App',
+    url: 'https://blipp.alexcloud.se',
+  },
+  {
     id: 'hypercraft',
     title: 'Hypercraft',
     description: 'En interaktiv showcase som demonstrerar det allra nyaste och mest avancerade inom modern frontend: WebGL Shaders med realtids-raymarching, procedural Web Audio syntesstudio, 2D Verlet rigid-body fysikarena, OKLCH, och mikrodynamik.',
