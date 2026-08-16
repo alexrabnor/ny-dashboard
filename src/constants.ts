@@ -483,8 +483,8 @@ export const APPS: AppDefinition[] = [
   },
   {
     id: 'wow',
-    title: 'Way Out West 2026',
-    description: 'Min egen festivalguide till Slottsskogen 13–15 augusti. Hela schemat för alla fem scener med favoritmarkering, krockvarningar när två utvalda går samtidigt och en dagsplan med luckor och scenbyten. Varje artist har presentation på svenska, trolig låtlista, 30-sekunders smakprov med tidssynkad låttext och bakgrund till låtarna. Installeras på hemskärmen och fungerar helt utan täckning.',
+    title: 'Way Out West 2027',
+    description: 'Min egen festivalguide till Slottsskogen, nu med nedräkning till 12–14 augusti 2027 och lineupen inlagd så fort den släpps. Schemat för alla fem scener med favoritmarkering, krockvarningar när två utvalda går samtidigt och en dagsplan med luckor och scenbyten. Varje artist får presentation på svenska, trolig låtlista, låttexter och bakgrund. I arkivet ligger hela 2026 fryst: sammanfattning dag för dag, min topplista med betyg, GP:s listor och festivalkrönikorna – plus 44 bilder och 7 filmklipp i galleriet.',
     icon: '🎪',
     banner: 'linear-gradient(135deg, #000000, #3a3a3a)',
     bannerEmoji: '🎤',
