@@ -174,6 +174,21 @@ export const MOBILE_APPS: MobileAppDefinition[] = [
 // Appar som andra delat med sig av (t.ex. GitHub). url pekar på live-appen eller repot.
 export const SHARED_APPS: AppDefinition[] = [
   {
+    id: 'whiteboard',
+    title: 'Interactive Whiteboard',
+    description: 'Interaktiv digital whiteboard i realtid för skisser, ritning, kod, dokument och AI-generering. Stödjer samarbete via P2P (PeerJS) och fildelning. Delad app från GitHub (fltman).',
+    icon: '🎨',
+    banner: 'linear-gradient(135deg, #1e1b4b, #4338ca)',
+    bannerEmoji: '🖌️',
+    category: 'Andras appar',
+    tags: ['React', 'TypeScript', 'PeerJS', 'AI'],
+    imageSeed: 'whiteboard',
+    status: 'active',
+    createdAt: '2026-08-17T23:00:00Z',
+    type: 'Web App',
+    url: 'https://whiteboard.alexcloud.se',
+  },
+  {
     id: 'owl-creek-radio',
     bannerImage: 'https://databasen.alexcloud.se/assets/6c1dc642-3568-42ec-a502-8bbb6b8eb896?width=800&quality=80',
     title: 'Owl Creek Radio',
@@ -437,7 +452,40 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'frolunda',
+    bannerImage: 'https://databasen.alexcloud.se/assets/bbae177c-b8ea-48f1-a75f-f3b410213896?width=1200&height=630&fit=cover&quality=80',
+    title: 'Frölunda HC',
+    description: 'Hela herrlagets säsong 2026/2027 på ett ställe: matchschema för både SHL och CHL, resultat, serietabell och truppen med statistik. Nästa match ligger överst med nedräkning, och varje match går att lägga i kalendern — eller hela säsongen som en prenumeration som uppdaterar sig själv när tiderna ändras. Matchdata hämtas live från frolundahockey.com.',
+    icon: '🏒',
+    banner: 'linear-gradient(135deg, #05231a, #00b04f, #0d1613)',
+    bannerEmoji: '🥅',
+    category: 'Sport',
+    tags: ['Hockey', 'SHL', 'CHL', 'Express', 'Docker', 'iCalendar'],
+    imageSeed: 'frolunda',
+    status: 'active',
+    createdAt: '2026-08-19T00:00:00Z',
+    type: 'Web App',
+    url: 'https://frolunda.alexcloud.se',
+  },
+  {
+    id: 'fotoportfolj',
+    bannerImage: 'https://fotoportfolj.alexcloud.se/images/o5-hypercar-sunset.jpg',
+    title: 'Alexanders Fotoportfölj',
+    description: 'En kromatisk och redaktionell fotoutställning och portfolio av Alexander Rabnor. Strukturerad i sju harmoniska färgspektra med mellanformat och precisionsoptik, realtids EXIF-data, färgpalettsanalys och filmsimuleringar.',
+    icon: '📸',
+    banner: 'linear-gradient(135deg, #1b3b2b, #e25e18, #682d88)',
+    bannerEmoji: '🎨',
+    category: 'Foto & Media',
+    tags: ['Foto', 'Hasselblad', 'Leica', 'Kromatik', 'Docker', 'Web Audio'],
+    imageSeed: 'fotoportfolj',
+    status: 'active',
+    createdAt: '2026-08-18T00:00:00Z',
+    type: 'Web App',
+    url: 'https://fotoportfolj.alexcloud.se',
+  },
+  {
     id: 'blipp',
+    bannerImage: 'https://blipp.alexcloud.se/og.png',
     title: 'Blipp',
     description: 'En TAKK-saga i åtta kapitel för barn 3–9 år. Väsendet Blipp landar hemma hos barnet — det varken hör eller pratar och förstår bara tecken, så barnet blir dess lärare. För att komma vidare måste barnet ut i rummet, hitta något på riktigt, fota det och teckna ordet. Alla 40 tecken visas som filmklipp, aldrig som textbeskrivningar. Två svårighetsnivåer styr uppdragen utan att sagan skrivs om. Foton och framsteg stannar i telefonen och skickas aldrig till någon server.',
     icon: '👋',
@@ -453,6 +501,7 @@ export const APPS: AppDefinition[] = [
   },
   {
     id: 'hypercraft',
+    bannerImage: 'https://databasen.alexcloud.se/assets/6162c017-a9e3-4ff0-8f50-f9b6ae8fa1c8?width=800&quality=80',
     title: 'Hypercraft',
     description: 'En interaktiv showcase som demonstrerar det allra nyaste och mest avancerade inom modern frontend: WebGL Shaders med realtids-raymarching, procedural Web Audio syntesstudio, 2D Verlet rigid-body fysikarena, OKLCH, och mikrodynamik.',
     icon: '🔮',
@@ -468,6 +517,7 @@ export const APPS: AppDefinition[] = [
   },
   {
     id: 'brewski',
+    bannerImage: 'https://databasen.alexcloud.se/assets/2fa470a0-bd04-4f87-972e-6486756db30e?width=800&quality=80',
     title: 'Brewski',
     description: 'Bryggeriguide till ölfestivalen Brewskival i Helsingborg 28–29 augusti. Alla 97 bryggerier från 21 länder, grupperade per land med faktaruta om varje: ort, grundat, stilar och vad de är kända för. Markera Måste, Gärna eller Kanske så räknas en gemensam topplista fram där Ingvars och mina poäng summeras. På plats sätts betyg 1–10 på ölen i snabbläge, med hela provningsprotokollet en knapptryckning bort, och den andres betyg är dolt tills du satt ditt.',
     icon: '🍺',
@@ -498,6 +548,7 @@ export const APPS: AppDefinition[] = [
   },
   {
     id: 'wow',
+    bannerImage: 'https://wow.alexcloud.se/gallery/IMG_20260814_213114.jpg',
     title: 'Way Out West 2027',
     description: 'Min egen festivalguide till Slottsskogen, nu med nedräkning till 12–14 augusti 2027 och lineupen inlagd så fort den släpps. Schemat för alla fem scener med favoritmarkering, krockvarningar när två utvalda går samtidigt och en dagsplan med luckor och scenbyten. Varje artist får presentation på svenska, trolig låtlista, låttexter och bakgrund. I arkivet ligger hela 2026 fryst: sammanfattning dag för dag, min topplista med betyg, GP:s listor och festivalkrönikorna – plus 44 bilder och 7 filmklipp i galleriet.',
     icon: '🎪',
