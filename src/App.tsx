@@ -54,6 +54,58 @@ const NAV_ITEMS: { page: Page; label: string; icon: React.ReactNode }[] = [
 ];
 type SortCriteria = 'name' | 'category' | 'type' | 'date';
 
+/**
+ * Sökträffarna. Samma lista används i toppfältet, i mobilmenyn och i mobilens
+ * egen sökrad – tre kopior av samma JSX höll inte, de hann redan glida isär i
+ * småsaker. Den breda varianten har plats för beskrivningen och en
+ * kategorimärkning, den smala får plats i en 288 px bred meny.
+ */
+function SearchResults({
+  results,
+  query,
+  onPick,
+  bred = false,
+}: {
+  results: { app: AppDefinition; group: string }[];
+  query: string;
+  onPick: () => void;
+  bred?: boolean;
+}) {
+  if (results.length === 0) {
+    return <p className={bred ? 'p-4 text-xs text-white/40' : 'p-3 text-xs text-white/40'}>Inga träffar på ”{query}”</p>;
+  }
+  return (
+    <>
+      {results.map(({ app, group }) => (
+        <a
+          key={`${bred ? 'b' : 's'}-${group}-${app.id}`}
+          href={app.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setTimeout(onPick, 150)}
+          className={`flex items-center gap-3 transition-colors hover:bg-surface-container-highest ${bred ? 'px-4 py-3' : 'px-3 py-2.5'}`}
+        >
+          <span
+            className={`flex shrink-0 items-center justify-center ${bred ? 'h-9 w-9 rounded-xl text-lg' : 'h-8 w-8 rounded-lg text-base'}`}
+            style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}
+          >
+            {app.bannerEmoji || app.icon}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-white">{app.title}</span>
+            <span className="block truncate text-[10px] text-white/40">{bred ? app.description : group}</span>
+          </span>
+          {bred && (
+            <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/40">
+              {group}
+            </span>
+          )}
+        </a>
+      ))}
+    </>
+  );
+}
+
 export default function App() {
   // #mobile, #games osv. öppnar rätt sida direkt (används av redirects från gamla sajten)
   const [currentPage, setCurrentPage] = useState<Page>(() => {
@@ -63,6 +115,10 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  // Sök på mobil låg tidigare bara inne i hamburgermenyn – tre steg innan man
+  // ens såg ett fält, och inget i vyn antydde att sökning fanns. Egen knapp i
+  // toppfältet i stället, som fäller ut en sökrad under headern.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigate = (page: Page) => {
@@ -251,37 +307,18 @@ export default function App() {
                   />
                 </div>
                 {query.length >= 2 && (
-                  <div 
+                  <div
                     className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high"
                     onMouseDown={(e) => e.preventDefault()}
                   >
-                    {searchResults.length === 0 ? (
-                      <p className="p-3 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
-                    ) : (
-                      searchResults.map(({ app, group }) => (
-                        <a
-                          key={`m-${group}-${app.id}`}
-                          href={app.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => {
-                            setTimeout(() => {
-                              setSearchQuery('');
-                              setMenuOpen(false);
-                            }, 150);
-                          }}
-                          className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-container-highest"
-                        >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
-                            {app.bannerEmoji || app.icon}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-bold text-white">{app.title}</span>
-                            <span className="block truncate text-[10px] text-white/40">{group}</span>
-                          </span>
-                        </a>
-                      ))
-                    )}
+                    <SearchResults
+                      results={searchResults}
+                      query={searchQuery.trim()}
+                      onPick={() => {
+                        setSearchQuery('');
+                        setMenuOpen(false);
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -349,43 +386,32 @@ export default function App() {
                 }}
               />
               {searchOpen && query.length >= 2 && (
-                <div 
+                <div
                   className="absolute right-0 top-full mt-2 w-96 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high shadow-2xl z-50"
                   onMouseDown={(e) => e.preventDefault()}
                 >
-                  {searchResults.length === 0 ? (
-                    <p className="p-4 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
-                  ) : (
-                    searchResults.map(({ app, group }) => (
-                      <a
-                        key={`${group}-${app.id}`}
-                        href={app.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => {
-                          setTimeout(() => {
-                            setSearchOpen(false);
-                            setSearchQuery('');
-                          }, 150);
-                        }}
-                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-container-highest"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
-                          {app.bannerEmoji || app.icon}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold text-white">{app.title}</span>
-                          <span className="block truncate text-[10px] text-white/40">{app.description}</span>
-                        </span>
-                        <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/40">
-                          {group}
-                        </span>
-                      </a>
-                    ))
-                  )}
+                  <SearchResults
+                    bred
+                    results={searchResults}
+                    query={searchQuery.trim()}
+                    onPick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                  />
                 </div>
               )}
             </div>
+            <button
+              onClick={() => setMobileSearchOpen((v) => !v)}
+              className={`rounded-lg p-2 transition-colors lg:hidden ${
+                mobileSearchOpen ? 'bg-surface-container text-white' : 'text-white/60 hover:bg-surface-container hover:text-white'
+              }`}
+              aria-label={mobileSearchOpen ? 'Stäng sök' : 'Sök appar och spel'}
+              aria-expanded={mobileSearchOpen}
+            >
+              {mobileSearchOpen ? <X size={22} /> : <Search size={22} />}
+            </button>
             <div className="flex items-center gap-4">
               <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-primary-container font-headline text-sm font-black text-on-primary-container">
                 A
@@ -393,6 +419,67 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* Sökrad på mobil – fälls ut under headern och följer med när sidan
+            scrollas, eftersom headern är sticky. */}
+        <AnimatePresence>
+          {mobileSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="sticky top-16 z-30 overflow-hidden border-b border-white/5 bg-surface/95 backdrop-blur-md lg:hidden"
+            >
+              <div className="px-4 py-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={16} />
+                  <input
+                    type="text"
+                    // Öppnas fältet ska man kunna börja skriva direkt
+                    autoFocus
+                    inputMode="search"
+                    placeholder="Sök bland alla appar och spel..."
+                    className="w-full rounded-full border-none bg-surface-container-lowest py-2.5 pl-10 pr-10 text-sm text-white focus:ring-1 focus:ring-primary/40"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setSearchQuery('');
+                        setMobileSearchOpen(false);
+                      }
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                      aria-label="Rensa sökningen"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {query.length >= 2 && (
+                  <div className="mt-2 max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-surface-container-high">
+                    <SearchResults
+                      results={searchResults}
+                      query={searchQuery.trim()}
+                      onPick={() => {
+                        setSearchQuery('');
+                        setMobileSearchOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+                {query.length === 1 && (
+                  <p className="mt-2 px-1 text-[11px] text-white/30">Skriv minst två tecken.</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="p-4 sm:p-8">
           <AnimatePresence mode="wait">
@@ -525,6 +612,18 @@ function formatEventTime(iso: string): string {
 function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const { statuses: appStatuses, renders } = useAppStatuses();
+
+  // Hur många appar biblioteket faktiskt innehåller. Räknas ur listorna i
+  // stället för att skrivas in för hand, så siffran aldrig blir gammal.
+  // Unika id:n: fyra spel ligger i både APPS och GAMES och ska inte räknas två
+  // gånger, medan uppdelningen visar hur många kort varje bibliotek har.
+  const bibliotek = {
+    totalt: new Set([...APPS, ...GAMES, ...SHARED_APPS, ...MOBILE_APPS].map((a) => a.id)).size,
+    appar: APPS.length,
+    spel: GAMES.length,
+    mobil: MOBILE_APPS.length,
+    delade: SHARED_APPS.length,
+  };
   const statusEntries = Object.entries(appStatuses);
   const upCount = statusEntries.filter(([, s]) => s === 'up').length;
   const downApps = statusEntries.filter(([, s]) => s === 'down').map(([id]) => id);
@@ -698,6 +797,26 @@ function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 </div>
               </div>
             </div>
+
+            {/* Hur många appar som finns – frågan "hur många har jag egentligen?"
+                gick tidigare bara att svara på genom att räkna korten. */}
+            <button
+              onClick={() => onNavigate('library')}
+              className="flex w-full items-center justify-between rounded-xl border border-white/5 bg-surface-container-lowest p-3 text-left transition-colors hover:bg-surface-container"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary-container/10">
+                  <Library className="text-primary-container" size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Appar och spel</p>
+                  <p className="text-[10px] text-white/40">
+                    {bibliotek.appar} i appbiblioteket · {bibliotek.spel} spel · {bibliotek.mobil} mobilappar · {bibliotek.delade} delade
+                  </p>
+                </div>
+              </div>
+              <span className="text-sm font-bold text-primary-container">{bibliotek.totalt}</span>
+            </button>
 
             {/* Tjänster online */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-lowest border border-white/5">
