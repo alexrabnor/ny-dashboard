@@ -204,6 +204,21 @@ export const SHARED_APPS: AppDefinition[] = [
     type: 'Web App',
     url: 'https://owlcreek.alexcloud.se',
   },
+  {
+    id: 'glimmer',
+    title: 'Glimmer (ai-ps)',
+    description: 'AI-first bildredigerare för webben — ett modernt, generativt Photoshop-alternativ med WebGL2-motor (generative fill, bakgrundsborttagning, upscaling m.m.). Delad app från GitHub (fltman).',
+    icon: '✨',
+    banner: 'linear-gradient(135deg, #181825, #7c3aed)',
+    bannerEmoji: '🪄',
+    category: 'Andras appar',
+    tags: ['React', 'WebGL2', 'TypeScript', 'AI'],
+    imageSeed: 'glimmer',
+    status: 'active',
+    createdAt: '2026-08-19T20:25:00Z',
+    type: 'Web App',
+    url: 'https://glimmer.alexcloud.se',
+  },
 ];
 
 // Spel från Spelarkivet (games.alexcloud.se)
