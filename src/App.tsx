@@ -251,7 +251,10 @@ export default function App() {
                   />
                 </div>
                 {query.length >= 2 && (
-                  <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high">
+                  <div 
+                    className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
                     {searchResults.length === 0 ? (
                       <p className="p-3 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
                     ) : (
@@ -261,7 +264,12 @@ export default function App() {
                           href={app.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={() => { setSearchQuery(''); setMenuOpen(false); }}
+                          onClick={() => {
+                            setTimeout(() => {
+                              setSearchQuery('');
+                              setMenuOpen(false);
+                            }, 150);
+                          }}
                           className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-container-highest"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
@@ -326,9 +334,12 @@ export default function App() {
                 placeholder="Sök appar och spel..."
                 className="w-64 rounded-full border-none bg-surface-container-lowest py-1.5 pl-10 pr-4 text-xs text-white focus:ring-1 focus:ring-primary/40"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchOpen(true);
+                }}
                 onFocus={() => setSearchOpen(true)}
-                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchQuery('');
@@ -338,7 +349,10 @@ export default function App() {
                 }}
               />
               {searchOpen && query.length >= 2 && (
-                <div className="absolute right-0 top-full mt-2 w-96 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high shadow-2xl">
+                <div 
+                  className="absolute right-0 top-full mt-2 w-96 overflow-hidden rounded-2xl border border-white/10 bg-surface-container-high shadow-2xl z-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
                   {searchResults.length === 0 ? (
                     <p className="p-4 text-xs text-white/40">Inga träffar på ”{searchQuery.trim()}”</p>
                   ) : (
@@ -348,7 +362,12 @@ export default function App() {
                         href={app.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => {
+                          setTimeout(() => {
+                            setSearchOpen(false);
+                            setSearchQuery('');
+                          }, 150);
+                        }}
                         className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-container-highest"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg" style={{ background: app.banner || 'rgba(255,255,255,0.05)' }}>
@@ -424,11 +443,16 @@ interface SystemStats {
 }
 
 type LiveStatus = 'up' | 'down';
+// Vad röktestet såg när det öppnade appen i en riktig webbläsare. 'tom' är
+// hela poängen: servern svarar, men sidan renderar ingenting.
+type RenderStatus = 'ok' | 'tom' | 'nere';
 type AppStatusMap = Record<string, LiveStatus>;
+type RenderMap = Record<string, RenderStatus>;
 
 // Hämtar riktig upp/ner-status för publika appar från servern (cachas där i 2 min)
-function useAppStatuses(): AppStatusMap {
+function useAppStatuses(): { statuses: AppStatusMap; renders: RenderMap } {
   const [statuses, setStatuses] = useState<AppStatusMap>({});
+  const [renders, setRenders] = useState<RenderMap>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -437,7 +461,11 @@ function useAppStatuses(): AppStatusMap {
         const res = await fetch('/api/app-status');
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setStatuses(data.statuses || {});
+        if (cancelled) return;
+        setStatuses(data.statuses || {});
+        // Äldre än tre dygn säger mer om att röktestet slutat köra än om
+        // apparna, och visas därför inte alls.
+        setRenders(data.roktestAlderTimmar !== null && data.roktestAlderTimmar <= 72 ? data.renders || {} : {});
       } catch {
         // behåll senaste kända värden
       }
@@ -447,12 +475,27 @@ function useAppStatuses(): AppStatusMap {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  return statuses;
+  return { statuses, renders };
 }
 
-function StatusBadge({ status }: { status?: LiveStatus }) {
+function StatusBadge({ status, render }: { status?: LiveStatus; render?: RenderStatus }) {
   if (!status) return null;
   const up = status === 'up';
+
+  // Svarar men renderar ingenting – det värsta läget, eftersom "Online" annars
+  // säger att allt är bra. Egen färg och egen text, inte en variant av online.
+  if (up && render === 'tom') {
+    return (
+      <span
+        className="flex items-center gap-1.5"
+        title="Servern svarar, men sidan är tom i webbläsaren – troligen ett JavaScript-fel"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Vit sida</span>
+      </span>
+    );
+  }
+
   return (
     <span className="flex items-center gap-1.5">
       <span className={`h-1.5 w-1.5 rounded-full ${up ? 'bg-secondary-container shadow-[0_0_8px_#34ff8d] animate-pulse' : 'bg-error shadow-[0_0_8px_#ff4d4d]'}`} />
@@ -481,14 +524,20 @@ function formatEventTime(iso: string): string {
 
 function DashboardHome({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const [stats, setStats] = useState<SystemStats | null>(null);
-  const appStatuses = useAppStatuses();
+  const { statuses: appStatuses, renders } = useAppStatuses();
   const statusEntries = Object.entries(appStatuses);
   const upCount = statusEntries.filter(([, s]) => s === 'up').length;
   const downApps = statusEntries.filter(([, s]) => s === 'down').map(([id]) => id);
+  // Appar som svarar men är tomma i webbläsaren. Utan dem här kunde
+  // sammanfattningen säga "Optimal" med en trasig app i listan.
+  const blankApps = Object.entries(renders)
+    .filter(([id, r]) => r === 'tom' && appStatuses[id] !== 'down')
+    .map(([id]) => id);
 
   // Hero-statusen styrs av riktiga värden istället för att alltid säga "Optimal"
   const issues: string[] = [];
   if (downApps.length > 0) issues.push(`${downApps.length} ${downApps.length === 1 ? 'app nere' : 'appar nere'}`);
+  if (blankApps.length > 0) issues.push(`${blankApps.length} ${blankApps.length === 1 ? 'app visar vit sida' : 'appar visar vit sida'}`);
   if (stats?.tempC != null && stats.tempC >= 75) issues.push('hög temperatur');
   if (stats && stats.loadAvg[0] / stats.cpuCount >= 0.9) issues.push('hög belastning');
   if (stats && stats.diskUsedPercent >= 90) issues.push('disken nästan full');
@@ -791,7 +840,7 @@ function DashboardCard({ item, onClick }: { item: DashboardItem, onClick: () => 
 function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<SortCriteria>('date');
   const sortedApps = sortApps(APPS, sortBy);
-  const statuses = useAppStatuses();
+  const { statuses, renders } = useAppStatuses();
 
   return (
     <div className="space-y-8">
@@ -814,6 +863,7 @@ function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => vo
             isFavorite={favorites.includes(app.id)}
             onToggleFavorite={() => onToggleFavorite(app.id)}
             liveStatus={statuses[app.id]}
+              renderStatus={renders[app.id]}
           />
         ))}
       </div>
@@ -824,7 +874,7 @@ function LibraryPage({ onBack, favorites, onToggleFavorite }: { onBack: () => vo
 function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<SortCriteria>('date');
   const sortedGames = sortApps(GAMES, sortBy);
-  const statuses = useAppStatuses();
+  const { statuses, renders } = useAppStatuses();
 
   return (
     <div className="relative -m-4 sm:-m-8 min-h-screen starfield p-4 sm:p-8">
@@ -870,6 +920,7 @@ function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void
               isFavorite={favorites.includes(game.id)}
               onToggleFavorite={() => onToggleFavorite(game.id)}
               liveStatus={statuses[game.id]}
+              renderStatus={renders[game.id]}
             />
           ))}
           
@@ -890,7 +941,7 @@ function GamesPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void
   );
 }
 
-function GameCard({ game, isFavorite, onToggleFavorite, liveStatus }: { game: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, key?: string }) {
+function GameCard({ game, isFavorite, onToggleFavorite, liveStatus, renderStatus }: { game: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, renderStatus?: RenderStatus, key?: string }) {
   return (
     <motion.a
       href={game.url}
@@ -978,7 +1029,7 @@ function GameCard({ game, isFavorite, onToggleFavorite, liveStatus }: { game: Ap
         <div className="flex items-center justify-between pt-4 border-t border-white/5">
           <div className="flex items-center gap-2">
             {liveStatus ? (
-              <StatusBadge status={liveStatus} />
+              <StatusBadge status={liveStatus} render={renderStatus} />
             ) : (
               <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">–</span>
             )}
@@ -1033,7 +1084,7 @@ function sortApps(apps: AppDefinition[], criteria: SortCriteria) {
   });
 }
 
-function AppCard({ app, isFavorite, onToggleFavorite, liveStatus }: { app: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, key?: string }) {
+function AppCard({ app, isFavorite, onToggleFavorite, liveStatus, renderStatus }: { app: AppDefinition, isFavorite: boolean, onToggleFavorite: () => void, liveStatus?: LiveStatus, renderStatus?: RenderStatus, key?: string }) {
   return (
     <motion.a
       href={app.url}
@@ -1108,7 +1159,7 @@ function AppCard({ app, isFavorite, onToggleFavorite, liveStatus }: { app: AppDe
       <div className="p-8">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-headline text-2xl font-bold text-white tracking-tight">{app.title}</h3>
-          <StatusBadge status={liveStatus} />
+          <StatusBadge status={liveStatus} render={renderStatus} />
         </div>
         
         <div className="mb-4 flex flex-wrap gap-2">
@@ -1135,7 +1186,7 @@ function AppCard({ app, isFavorite, onToggleFavorite, liveStatus }: { app: AppDe
 function SharedAppsPage({ onBack, favorites, onToggleFavorite }: { onBack: () => void, favorites: string[], onToggleFavorite: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<SortCriteria>('date');
   const sortedApps = sortApps(SHARED_APPS, sortBy);
-  const statuses = useAppStatuses();
+  const { statuses, renders } = useAppStatuses();
 
   return (
     <div className="space-y-8">
@@ -1169,6 +1220,7 @@ function SharedAppsPage({ onBack, favorites, onToggleFavorite }: { onBack: () =>
               isFavorite={favorites.includes(app.id)}
               onToggleFavorite={() => onToggleFavorite(app.id)}
               liveStatus={statuses[app.id]}
+              renderStatus={renders[app.id]}
             />
           ))}
         </div>

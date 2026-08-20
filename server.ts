@@ -32,6 +32,36 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
   {
+    id: "utgiftskollen",
+    title: "Utgiftskollen",
+    description: "Utgifter mot inkomst, månad för månad. Swedbank-CSV:n släpps in, kategoriseras automatiskt av en regelmotor som klarar att banken stavar HEMKOP GOTEBORG på kortköp och Hemköp via Swish. Överföringar mellan egna konton räknas bort så nettot blir sant, och den pågående månaden markeras som ofullständig tills hyran och lönen faktiskt dragits. Träffar som ingen regel fångar hamnar i en granskningslista där en ny regel kan skapas på plats.",
+    icon: "📊",
+    category: "Ekonomi",
+    tags: ["Express", "SQLite", "Papaparse", "Docker"],
+    imageSeed: "utgiftskollen",
+    status: "active",
+    createdAt: "2026-08-20T00:00:00Z",
+    type: "Web App",
+    url: "https://utgifter.alexcloud.se",
+    banner: "linear-gradient(135deg, #1f6f5c, #2f8f6f)",
+    bannerEmoji: "📊",
+  },
+  {
+    id: "prem",
+    title: "Prem",
+    description: "Prenumerationskollen – håll koll på alla löpande prenumerationer. Visar totalkostnad per månad och år, kostnad per kategori, kommande dragningar och automatiska tjänsteikoner. Glasmorfism-design med orange/guld-accent.",
+    icon: "💳",
+    category: "Ekonomi",
+    tags: ["React", "Vite", "Express", "Directus", "Docker"],
+    imageSeed: "prem",
+    status: "active",
+    createdAt: "2026-08-18T00:00:00Z",
+    type: "Web App",
+    url: "https://prem.alexcloud.se",
+    banner: "linear-gradient(135deg, #E8850C, #F5A623)",
+    bannerEmoji: "💳",
+  },
+  {
     id: "anor",
     title: "Anor",
     description:
@@ -218,6 +248,21 @@ const PRIVATE_APPS = [
 // bara ut efter korrekt lösenord (samma lösenord som "Övriga appar").
 const SYSTEM_APPS = [
   {
+    id: "puls",
+    title: "Puls – Server & Statusboard",
+    description: "Realtidsövervakning av serverhårdvara (CPU, RAM, Disk), Docker-containrar och kontinuerlig status/uptime-kontroll för alla appar på alexcloud.se.",
+    icon: "🫀",
+    category: "System",
+    tags: ["React", "Vite", "Express", "Docker", "Övervakning"],
+    imageSeed: "puls",
+    status: "active",
+    createdAt: "2026-08-18T00:00:00Z",
+    type: "Web App",
+    url: "https://puls.alexcloud.se",
+    banner: "linear-gradient(135deg, #06090e, #10b981)",
+    bannerEmoji: "🫀",
+  },
+  {
     id: "nextcloud",
     title: "Nextcloud",
     description: "Eget moln för filer & foton.",
@@ -395,6 +440,45 @@ registerSystemInfoRoutes(app, checkPassword);
 // aldrig läcka via ett publikt endpoint.
 
 type AppStatus = "up" | "down";
+
+// --- Röktest -------------------------------------------------------------
+// Pingen ovan ser bara HTTP-status. En app vars server svarar 200 men vars
+// JavaScript kraschar i webbläsaren står därför som "online" hur trasig den
+// än är – Fondhjärnan låg vit i tre månader utan att något syntes här.
+//
+// ~/verktyg/roktest öppnar varje app i en riktig Chrome en gång per dygn och
+// skriver resultatet till data/roktest.json, som ligger bind-monterad. Själva
+// webbläsaren körs alltså på värden, utanför den här containern: en
+// sidladdning tar ett par sekunder och hör inte hemma i ett statusanrop.
+type RenderStatus = "ok" | "tom" | "nere";
+interface Roktest {
+  kordes: string;
+  antal: number;
+  sammanfattning: Record<string, number>;
+  appar: Record<string, { status: RenderStatus; httpStatus: number; tecken: number; noder: number; jsFel: string[] }>;
+}
+
+// Samma DATA_DIR-konvention som diskskanningen i systemInfo.ts. __dirname
+// finns inte här – server.ts körs som ES-modul.
+const ROKTEST_FIL = path.join(process.env.DATA_DIR || path.join(process.cwd(), "data"), "roktest.json");
+
+function lasRoktest(): { kordes: string; renders: Record<string, RenderStatus>; alder: number } | null {
+  try {
+    const rad = JSON.parse(fs.readFileSync(ROKTEST_FIL, "utf8")) as Roktest;
+    const renders: Record<string, RenderStatus> = {};
+    for (const [id, r] of Object.entries(rad.appar || {})) renders[id] = r.status;
+    return {
+      kordes: rad.kordes,
+      renders,
+      // Timmar sedan körningen. En gammal fil ska inte presenteras som färsk
+      // sanning, så klienten får själv avgöra om den vill lita på den.
+      alder: Math.round((Date.now() - new Date(rad.kordes).getTime()) / 3_600_000),
+    };
+  } catch {
+    return null; // filen saknas tills röktestet körts första gången
+  }
+}
+
 let appStatusCache: { value: { statuses: Record<string, AppStatus>; checkedAt: string }; fetchedAt: number } | null = null;
 let appStatusRefreshing: Promise<void> | null = null;
 
@@ -448,7 +532,15 @@ app.get("/api/app-status", async (_req, res) => {
       }
       await appStatusRefreshing;
     }
-    res.json(appStatusCache!.value);
+    // Röktestet läses vid varje anrop – filen är liten och skrivs bara en
+    // gång per dygn, så den ska inte cachas ihop med pingen.
+    const rok = lasRoktest();
+    res.json({
+      ...appStatusCache!.value,
+      renders: rok?.renders ?? {},
+      roktestKordes: rok?.kordes ?? null,
+      roktestAlderTimmar: rok?.alder ?? null,
+    });
   } catch {
     res.status(500).json({ error: "Kunde inte kontrollera appstatus" });
   }
