@@ -467,6 +467,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'albatross',
+    title: 'Albatrossen',
+    description: 'Digital yardage book för hemmabanan Albatrossen 18 hål på Albatross Golfklubb i Hisings Backa. Klubbens egen hålbeskrivning och hålskisser för alla 18 hål, avstånd och greendjup från vit, gul, blå och röd tee, samt en slagplan per hål räknad ur den egna bagen. Välj tee och exakt handicap så räknas spelhandicap och netto par om automatiskt. Utskriftsläge i ren text för scorekortet, och fungerar helt utan mobiltäckning.',
+    icon: '🕊️',
+    banner: 'linear-gradient(135deg, #072f26, #0d4a3c, #e3d6b8)',
+    bannerEmoji: '⛳',
+    category: 'Sport',
+    tags: ['Golf', 'Albatross', 'Banguide', 'Hemmabana', 'Offline'],
+    imageSeed: 'albatross',
+    status: 'active',
+    createdAt: '2026-08-22T00:00:00Z',
+    type: 'Web App',
+    url: 'https://albatross.alexcloud.se',
+  },
+  {
     id: 'smgolf',
     title: 'Sotenäs SM-guiden',
     description: 'Digital yardage book för Sotenäs Golfklubb inför Döv-SM 5–6 september 2026. Alla 18 hål från gul tee med klubbens egna hålskisser, avstånd till varje hinder, netto par utifrån spelhandicap 25 och en färdig slagplan per hål — byggd på en rond spelad på plats. Fungerar helt utan mobiltäckning.',
