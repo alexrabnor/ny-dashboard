@@ -32,6 +32,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS = [
   {
+    id: "assistenten",
+    title: "Assistenten",
+    description: "Personlig Telegram-assistent mot Claude API som läser ur serverns egna appar: magdagboken, utgiftskollen, kokboken och appstatusen. Den kan också ändra saker – logga en dag eller ett skov, kategorisera transaktioner, spara recept – men aldrig på egen hand: varje ändring kommer som ett förslag med Ja/Nej-knapp i Telegram och skrivs först när knappen tryckts. Veckosammanfattning på söndagar. Den här sidan visar status, hela åtgärdsloggen och de senaste meddelandena.",
+    icon: "💬",
+    category: "Verktyg",
+    tags: ["Express", "Claude API", "Telegram", "SQLite", "PIN"],
+    imageSeed: "assistenten",
+    status: "active",
+    createdAt: "2026-08-23T00:00:00Z",
+    type: "Web App",
+    url: "https://assistenten.alexcloud.se",
+    banner: "linear-gradient(135deg, #0b0f16, #1d4ed8, #4cc2ff)",
+    bannerEmoji: "🤖",
+  },
+  {
     id: "nerladdat",
     title: "Nerladdat",
     description: "Register över varje film och serie som ligger hemma på servern. Läser nedladdningsmappen och tolkar scene-filnamnen till titel, år, säsong och kvalitet, hämtar affisch, genre och handling från TMDB och länkar till exakt rätt IMDb-sida. Eget betyg 1–10 och sett-datum vid sidan av IMDb-betyget, säsong för säsong på serierna, och en varning när filen försvunnit från disken.",
