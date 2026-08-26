@@ -467,6 +467,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'akademin',
+    title: 'Akademin',
+    description: 'Svensk kursplattform om hur Claude faktiskt fungerar. Nio kurser och 75 lektioner som går från första prompten till Claude Code, skills, MCP och API:et — med mekanismen bakom förklarad, inte bara knapptrycken. Varje kurs har quiz med förklaringar, och till det finns en ordlista på 40 begrepp och färdiga fusklappar med kommandon och promptmallar. Sök i allt innehåll, egna anteckningar per lektion och sparade framsteg per kurs.',
+    icon: '🎓',
+    banner: 'linear-gradient(135deg, #1f1c19, #6b3320, #c96442)',
+    bannerEmoji: '📚',
+    category: 'Utbildning',
+    tags: ['Claude', 'AI', 'Kurser', 'Claude Code', 'MCP', 'Prompting'],
+    imageSeed: 'akademin',
+    status: 'active',
+    createdAt: '2026-08-26T00:00:00Z',
+    type: 'Web App',
+    url: 'https://akademin.alexcloud.se',
+  },
+  {
     id: 'albatross',
     title: 'Albatrossen',
     description: 'Digital yardage book för hemmabanan Albatrossen 18 hål på Albatross Golfklubb i Hisings Backa. Klubbens egen hålbeskrivning och hålskisser för alla 18 hål, avstånd och greendjup från vit, gul, blå och röd tee, samt en slagplan per hål räknad ur den egna bagen. Välj tee och exakt handicap så räknas spelhandicap och netto par om automatiskt. Utskriftsläge i ren text för scorekortet, och fungerar helt utan mobiltäckning.',
