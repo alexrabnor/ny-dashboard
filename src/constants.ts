@@ -467,6 +467,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'tallriken',
+    title: 'Tallriken',
+    description: 'Bilddagbok över allt jag ätit ute. Varje rätt är ett foto taget vid bordet, några rader om hur den var och ett betyg mellan 1 och 10 i halvsteg. Restaurangerna får egna sidor där snittbetyget räknas fram ur rätterna, så listan kan aldrig säga emot sig själv, och topplistan växlar mellan de bästa rätterna och de bästa ställena. Bilderna skalas i webbläsaren till två storlekar så galleriet går snabbt även på mobilen.',
+    icon: '🍽️',
+    banner: 'linear-gradient(135deg, #0e1a1b, #1e3538, #e2703a)',
+    bannerEmoji: '📸',
+    category: 'Mat & Dryck',
+    tags: ['Mat', 'Restaurang', 'Betyg', 'Foto', 'Dagbok'],
+    imageSeed: 'tallriken',
+    status: 'active',
+    createdAt: '2026-08-29T00:00:00Z',
+    type: 'Web App',
+    url: 'https://tallriken.alexcloud.se',
+  },
+  {
     id: 'akademin',
     title: 'Akademin',
     description: 'Svensk kursplattform om hur Claude faktiskt fungerar. Nio kurser och 75 lektioner som går från första prompten till Claude Code, skills, MCP och API:et — med mekanismen bakom förklarad, inte bara knapptrycken. Varje kurs har quiz med förklaringar, och till det finns en ordlista på 40 begrepp och färdiga fusklappar med kommandon och promptmallar. Sök i allt innehåll, egna anteckningar per lektion och sparade framsteg per kurs.',
