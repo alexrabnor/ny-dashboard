@@ -32,6 +32,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS: AppDefinition[] = [
   {
+    id: "stomi",
+    title: "Stomi",
+    description: "Dagligt styrverktyg vid kolostomi. Tömningar loggas på tre sekunder med konsistens i fyra steg, måltider skrivs som fritext och auto-taggas mot en sökbar livsmedelsdatabas på 162 poster i två skikt: källbelagd kärna och härledda poster, tydligt åtskilda. Bytesknappen räknar ned materiallagret och varnar innan det tar slut. Analysen jämför lösa dygn med och utan varje faktor i två separata tidsfönster och håller tyst tills underlaget räcker.",
+    icon: "◉",
+    category: "Hälsa",
+    tags: ["Express", "SQLite", "Docker", "PIN", "PWA"],
+    imageSeed: "stomi",
+    status: "active",
+    createdAt: "2026-09-06T21:00:00Z",
+    type: "Web App",
+    url: "https://stomi.alexcloud.se",
+    banner: "linear-gradient(135deg, #191310, #a4441c)",
+    bannerEmoji: "◉",
+  },
+  {
     id: "tappavikt",
     title: "tappavikt",
     description: "Viktapp med riktiga kalorier ur Livsmedelsverkets databas (2 606 livsmedel) plus märkesvaror från Open Food Facts. Följs upp per vecka i stället för per dag, visar nästa delmål i stället för hela avståndet, och peppar men skäller aldrig. Innehåller bytestips med uträknad besparing och 20 recept valda för mättnad per kalori.",
