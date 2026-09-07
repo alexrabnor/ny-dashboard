@@ -34,7 +34,7 @@ const PRIVATE_APPS: AppDefinition[] = [
   {
     id: "klara-budget",
     title: "Klaras Budget",
-    description: "Personlig budgetapp för Klara med sparmål mot iPhone 17 Pro. Överblicka inkomster och utgifter, följ upp avbetalningar och se sparframsteg med motiverande meddelanden och confetti när målet nås. Mobilanpassad med cirkulär progress-ring, kategorivis utgiftsanalys och budgethälsa. PIN-låst med egen kod.",
+    description: "Personlig budgetapp för Klara. Kontoutdraget läses in som CSV – kodningen avgörs server-side så Swedbanks CP1252 inte förstör å, ä och ö – och posterna kategoriseras automatiskt, med förhandsgranskning per månad och ångra på hela importen. Följer avbetalningar månad för månad över planens löptid, och har ett fritt sparmål hon själv sätter. PIN-låst med egen kod, egen SQLite-volym.",
     icon: "💰",
     banner: "linear-gradient(135deg, #1a0b2e, #7c3aed, #fbbf24)",
     bannerEmoji: "📱",
