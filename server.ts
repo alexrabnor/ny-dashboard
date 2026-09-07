@@ -32,6 +32,21 @@ function safeEqual(a: string, b: string) {
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS: AppDefinition[] = [
   {
+    id: "klara-budget",
+    title: "Klaras Budget",
+    description: "Personlig budgetapp för Klara med sparmål mot iPhone 17 Pro. Överblicka inkomster och utgifter, följ upp avbetalningar och se sparframsteg med motiverande meddelanden och confetti när målet nås. Mobilanpassad med cirkulär progress-ring, kategorivis utgiftsanalys och budgethälsa. PIN-låst med egen kod.",
+    icon: "💰",
+    banner: "linear-gradient(135deg, #1a0b2e, #7c3aed, #fbbf24)",
+    bannerEmoji: "📱",
+    category: "Ekonomi",
+    tags: ["Budget", "Sparande", "Ekonomi", "iPhone", "Avbetalning"],
+    imageSeed: "klara-budget",
+    status: "active",
+    createdAt: "2026-09-06T00:00:00Z",
+    type: "Web App",
+    url: "https://klara.alexcloud.se",
+  },
+  {
     id: "stomi",
     title: "Stomi",
     description: "Dagligt styrverktyg vid kolostomi. Tömningar loggas på tre sekunder med konsistens i fyra steg, måltider skrivs som fritext och auto-taggas mot en sökbar livsmedelsdatabas på 162 poster i två skikt: källbelagd kärna och härledda poster, tydligt åtskilda. Bytesknappen räknar ned materiallagret och varnar innan det tar slut. Analysen jämför lösa dygn med och utan varje faktor i två separata tidsfönster och håller tyst tills underlaget räcker.",
