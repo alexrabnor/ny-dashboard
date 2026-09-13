@@ -452,6 +452,21 @@ export const GAMES: AppDefinition[] = [
 // Appar från Appbiblioteket (alexcloud.se/apps.html)
 export const APPS: AppDefinition[] = [
   {
+    id: 'kocktips',
+    title: 'Kocktips',
+    description: 'Knepen som gör maten bättre, samlade från kockar och förklarade. 71 tips i åtta tekniker — stekning, kokning, såser, bakning, salt, grönsaker, kniv och temperatur — där varje tips har en rubrik, hur du gör och ett stycke om varför det faktiskt fungerar. Ett tips knyts till en namngiven kock bara när tekniken bevisligen är hens och källan anges; resten står som klassiskt kökshantverk. Dagens tips byts vid midnatt, sök på råvara eller redskap, spara favoriter och bocka av vad du testat. Egen sida med köksutrustningen som checklista.',
+    icon: '👨‍🍳',
+    banner: 'linear-gradient(135deg, #1b1712, #5c2a12, #9c3b17)',
+    bannerEmoji: '🔪',
+    category: 'Mat & Dryck',
+    tags: ['Matlagning', 'Tips', 'Kockar', 'Teknik', 'Kök'],
+    imageSeed: 'kocktips',
+    status: 'active',
+    createdAt: '2026-09-13T00:00:00Z',
+    type: 'Web App',
+    url: 'https://kocktips.alexcloud.se',
+  },
+  {
     id: 'tallriken',
     title: 'Tallriken',
     description: 'Bilddagbok över allt jag ätit ute. Varje rätt är ett foto taget vid bordet, några rader om hur den var och ett betyg mellan 1 och 10 i halvsteg. Restaurangerna får egna sidor där snittbetyget räknas fram ur rätterna, så listan kan aldrig säga emot sig själv, och topplistan växlar mellan de bästa rätterna och de bästa ställena. Bilderna skalas i webbläsaren till två storlekar så galleriet går snabbt även på mobilen.',
@@ -1403,5 +1418,20 @@ export const APPS: AppDefinition[] = [
     createdAt: '2026-07-25T00:00:00Z',
     type: 'Web App',
     url: 'https://kortspel.alexcloud.se',
+  },
+  {
+    id: 'helgguiden',
+    title: 'Helgguiden',
+    description: 'Vad kan man göra i Göteborg i helgen? Konserter, mat, show, ölevemang och musik/klubbkvällar samlat från Ticketmaster, Trädgår\'n, Pustervik, Luger, Sveriges Oberoende Bryggerier och goteborg.com. Bläddra mellan kommande helger, välj kategori och klicka vidare till biljetter eller mer info hos arrangören. Uppdateras automatiskt varje måndag.',
+    icon: '⚓',
+    banner: 'linear-gradient(135deg, #0b2340, #123156, #c1652f)',
+    bannerEmoji: '🔱',
+    category: 'Evenemang',
+    tags: ['Göteborg', 'Konserter', 'Nöje', 'Skrapning'],
+    imageSeed: 'helgguiden',
+    status: 'active',
+    createdAt: '2026-09-13T00:00:00Z',
+    type: 'Web App',
+    url: 'https://helgguiden.alexcloud.se',
   },
 ];
