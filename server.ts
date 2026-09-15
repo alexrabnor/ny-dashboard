@@ -8,6 +8,7 @@ import axios from "axios";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { APPS, GAMES, SHARED_APPS } from "./src/constants";
+import type { AppDefinition, MobileAppDefinition } from "./src/types";
 import { registerSystemInfoRoutes } from "./systemInfo";
 
 dotenv.config();
@@ -31,6 +32,21 @@ function safeEqual(a: string, b: string) {
 // Personliga appar – listan finns ENDAST här på servern och skickas aldrig
 // med i den publika webb-bundlen. Den lämnas bara ut efter korrekt lösenord.
 const PRIVATE_APPS: AppDefinition[] = [
+  {
+    id: "kalender",
+    title: "Kalender",
+    description: "Kalender som lär sig vad som tar och ger energi. Du taggar aldrig enskilda aktiviteter – du skattar bara dagen i efterhand på en femgradig skala, och en ridge-regression räknar baklänges fram vad en timme i varje kategori kostar. Därmed kan den prognosticera dagar du ännu inte levt och varna innan tre tunga dagar hamnar på raken utan återhämtning. Månadsvyn är en svensk almanacka med namnsdagar och helgdagar; årsvyn en heatmap per kategori som visar hur konsekvent du faktiskt gjort saker. Envägsimport från Google Calendar med nyckelordsregler, .ics-export, fritextsök. PIN-låst på både läsning och skrivning, egen SQLite-volym.",
+    icon: "◳",
+    banner: "linear-gradient(135deg, #151a21, #9a5716, #e0912f)",
+    bannerEmoji: "◳",
+    category: "Övrigt",
+    tags: ["Express", "React", "SQLite", "Docker", "PIN", "APK"],
+    imageSeed: "kalender",
+    status: "active",
+    createdAt: "2026-09-15T00:00:00Z",
+    type: "Web App",
+    url: "https://kalender.alexcloud.se",
+  },
   {
     id: "klara-budget",
     title: "Klaras Budget",
@@ -549,6 +565,30 @@ const SYSTEM_APPS = [
   },
 ];
 
+// Privata mobilappar – samma princip som PRIVATE_APPS: listan finns ENDAST här
+// på servern och lämnas bara ut efter lösenord. Den publika MOBILE_APPS-arrayen
+// i src/constants.ts hamnar i webb-bundlen och duger därför inte.
+//
+// APK-filen serveras av appen själv på kalender.alexcloud.se, inte härifrån.
+// Den måste vara öppen (man behöver appen för att kunna logga in i appen), och
+// att kopiera in den i ./downloads skulle bara ge en kopia som blir gammal vid
+// varje nytt bygge.
+const PRIVATE_MOBILE_APPS: MobileAppDefinition[] = [
+  {
+    id: "kalender-apk",
+    title: "Kalender",
+    description: "Kalendern som app på hemskärmen, med notiser för dagsskattningen och för inbokade händelser. Skalet laddar kalender.alexcloud.se, så appen behöver bara installeras en gång – alla senare ändringar når telefonen direkt utan ominstallation.",
+    icon: "◳",
+    banner: "linear-gradient(135deg, #151a21, #9a5716, #e0912f)",
+    bannerEmoji: "◳",
+    tags: ["Capacitor", "Android", "Notiser", "Privat"],
+    kind: "APK",
+    status: "active",
+    url: "https://kalender.alexcloud.se/ladda-ner",
+    fileSize: "~3 MB",
+  },
+];
+
 function checkPassword(password: unknown): boolean {
   return typeof password === "string" && !!PRIVATE_PASS && safeEqual(password, PRIVATE_PASS);
 }
@@ -575,6 +615,18 @@ app.post("/api/system-apps", (req, res) => {
     return res.status(401).json({ error: "Fel lösenord" });
   }
   res.json(SYSTEM_APPS);
+});
+
+// Skyddad endpoint: privata mobilappar (samma lösenord som övriga skyddade listor)
+app.post("/api/private-mobile-apps", (req, res) => {
+  const { password } = req.body || {};
+  if (!PRIVATE_PASS) {
+    return res.status(500).json({ error: "Lösenord ej konfigurerat på servern" });
+  }
+  if (!checkPassword(password)) {
+    return res.status(401).json({ error: "Fel lösenord" });
+  }
+  res.json(PRIVATE_MOBILE_APPS);
 });
 
 // Detaljerad systeminfo (RAM, disk, containrar, vad som tar plats) – ligger

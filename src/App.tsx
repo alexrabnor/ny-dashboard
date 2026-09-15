@@ -1850,6 +1850,97 @@ function MobileAppsPage({ onBack }: { onBack: () => void }) {
           <MobileAppCard key={app.id} app={app} />
         ))}
       </div>
+
+      <PrivateMobileApps />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Privata mobilappar. Listan finns bara på servern och hämtas efter lösenord –
+// samma lösenord som "Övriga appar". Ligger sist på sidan så den öppna delen
+// ser likadan ut som förut för den som inte låser upp.
+// ---------------------------------------------------------------------------
+function PrivateMobileApps() {
+  const [password, setPassword] = useState('');
+  const [apps, setApps] = useState<MobileAppDefinition[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/private-mobile-apps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) setApps(await res.json());
+      else setError('Fel lösenord. Försök igen.');
+    } catch {
+      setError('Något gick fel. Försök igen.');
+    } finally {
+      setLoading(false);
+      setPassword('');
+    }
+  };
+
+  if (apps) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Lock size={16} className="text-primary-container" />
+          <h3 className="font-headline text-lg font-bold text-white">Privata appar</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {apps.map((app) => (
+            <MobileAppCard key={app.id} app={app} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 text-sm font-bold text-white/30 transition-colors hover:text-white/60"
+      >
+        <Lock size={14} />
+        Privata appar
+      </button>
+    );
+  }
+
+  return (
+    <div className="max-w-md rounded-3xl bg-surface-container p-6 border border-white/10">
+      <div className="mb-4 flex items-center gap-3">
+        <Lock size={16} className="text-primary-container" />
+        <h3 className="font-headline text-lg font-bold text-white">Privata appar</h3>
+      </div>
+      <form onSubmit={handleUnlock}>
+        <input
+          autoFocus
+          type="password"
+          placeholder="Lösenord"
+          className="w-full rounded-2xl border border-white/10 bg-surface-container-lowest p-4 text-white focus:ring-2 focus:ring-primary-container mb-4"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={loading}
+        />
+        {error && <p className="mb-4 text-sm font-bold text-error">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading || !password}
+          className="w-full rounded-2xl bg-primary-container py-3 text-sm font-bold text-on-primary-container hover:opacity-90 disabled:opacity-50"
+        >
+          {loading ? 'Låser upp…' : 'Lås upp'}
+        </button>
+      </form>
     </div>
   );
 }
